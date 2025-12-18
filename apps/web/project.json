@@ -21,11 +21,7 @@
           }
         ],
         "styles": ["apps/web/src/styles.scss"],
-        "server": "apps/web/src/main.server.ts",
-        "ssr": {
-          "entry": "apps/web/src/server.ts"
-        },
-        "outputMode": "server"
+        "ssr": false
       },
       "configurations": {
         "production": {
@@ -54,6 +50,9 @@
     "serve": {
       "continuous": true,
       "executor": "@angular/build:dev-server",
+      "options": {
+        "allowedHosts": ["all", "4200-ioq48kyxpg6zofu949qov-202615f8.manusvm.computer", ".manusvm.computer"]
+      },
       "configurations": {
         "production": {
           "buildTarget": "web:build:production"
