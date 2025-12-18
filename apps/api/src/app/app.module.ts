@@ -18,6 +18,10 @@ import { MessagesModule } from '../modules/messages/messages.module';
 import { IotModule } from '../modules/iot/iot.module';
 import { AiModule } from '../modules/ai/ai.module';
 
+// Phase 2 Modules - APIs Layer
+import { InternalApiModule } from '../modules/internal-api/internal-api.module';
+import { ExternalApiModule } from '../modules/external-api/external-api.module';
+
 @Module({
   imports: [
     // Configuration
@@ -47,6 +51,10 @@ import { AiModule } from '../modules/ai/ai.module';
     MessagesModule,
     IotModule,
     AiModule,
+
+    // Phase 2 - APIs Layer
+    InternalApiModule,
+    ExternalApiModule,
   ],
   controllers: [AppController],
   providers: [AppService],
