@@ -1,5 +1,8 @@
 autoInstallPeers: true
 
+ignoredBuiltDependencies:
+  - '@prisma/client'
+
 onlyBuiltDependencies:
   - '@nestjs/core'
   - '@parcel/watcher'
