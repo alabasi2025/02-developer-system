@@ -257,7 +257,7 @@ export class EventProcessorService implements OnModuleInit {
   /**
    * الحصول على الأحداث الفاشلة
    */
-  async getFailedEvents(limit: number = 100): Promise<any[]> {
+  async getFailedEvents(limit = 100): Promise<any[]> {
     return this.prisma.devEvent.findMany({
       where: { status: 'failed' },
       orderBy: { createdAt: 'desc' },

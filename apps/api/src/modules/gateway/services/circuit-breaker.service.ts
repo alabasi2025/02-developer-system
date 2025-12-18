@@ -50,7 +50,7 @@ export class CircuitBreakerService {
       case CircuitState.CLOSED:
         return true;
       
-      case CircuitState.OPEN:
+      case CircuitState.OPEN: {
         // Check if timeout has passed
         const timeSinceOpen = Date.now() - circuit.stateChangedAt.getTime();
         if (timeSinceOpen >= this.defaultConfig.timeout) {
@@ -58,6 +58,7 @@ export class CircuitBreakerService {
           return true;
         }
         return false;
+      }
       
       case CircuitState.HALF_OPEN:
         return true;

@@ -281,7 +281,7 @@ export class MonitoringService {
     });
   }
 
-  async getMetricHistory(metricName: string, hours: number = 24) {
+  async getMetricHistory(metricName: string, hours = 24) {
     const since = new Date(Date.now() - hours * 60 * 60 * 1000);
 
     return this.prisma.devSystemMetric.findMany({

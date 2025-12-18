@@ -295,7 +295,7 @@ export class WebhookDispatcherService {
   /**
    * الحصول على التسليمات الفاشلة
    */
-  async getFailedDeliveries(limit: number = 100): Promise<any[]> {
+  async getFailedDeliveries(limit = 100): Promise<any[]> {
     return this.prisma.devWebhookDelivery.findMany({
       where: { status: 'failed' },
       orderBy: { createdAt: 'desc' },

@@ -196,8 +196,8 @@ import { ApiService } from '../../core/services/api.service';
                 </div>
                 <p class="text-sm text-gray-600 mb-3">{{ template.content | slice:0:100 }}...</p>
                 <div class="flex gap-2">
-                  <button pButton pRipple icon="pi pi-eye" class="p-button-text p-button-sm"></button>
-                  <button pButton pRipple icon="pi pi-pencil" class="p-button-text p-button-sm"></button>
+                  <button pButton pRipple icon="pi pi-eye" class="p-button-text p-button-sm" aria-label="عرض"></button>
+                  <button pButton pRipple icon="pi pi-pencil" class="p-button-text p-button-sm" aria-label="تعديل"></button>
                 </div>
               </p-card>
             }
@@ -213,8 +213,8 @@ import { ApiService } from '../../core/services/api.service';
               [style]="{ width: '500px' }">
       <div class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">نوع الرسالة *</label>
-          <p-select [options]="messageTypeOptions"
+          <label for="messageType" class="block text-sm font-medium text-gray-700 mb-1">نوع الرسالة *</label>
+          <p-select id="messageType" [options]="messageTypeOptions"
                       [(ngModel)]="messageForm.type"
                       optionLabel="label"
                       optionValue="value"
@@ -223,19 +223,19 @@ import { ApiService } from '../../core/services/api.service';
           </p-select>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">المستلم *</label>
-          <input pInputText [(ngModel)]="messageForm.recipient" class="w-full" 
+          <label for="recipient" class="block text-sm font-medium text-gray-700 mb-1">المستلم *</label>
+          <input id="recipient" pInputText [(ngModel)]="messageForm.recipient" class="w-full" 
                  [placeholder]="messageForm.type === 'email' ? 'email@example.com' : '+966xxxxxxxxx'" />
         </div>
         @if (messageForm.type === 'email') {
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">الموضوع *</label>
-            <input pInputText [(ngModel)]="messageForm.subject" class="w-full" />
+            <label for="subject" class="block text-sm font-medium text-gray-700 mb-1">الموضوع *</label>
+            <input id="subject" pInputText [(ngModel)]="messageForm.subject" class="w-full" />
           </div>
         }
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">الرسالة *</label>
-          <textarea pTextarea [(ngModel)]="messageForm.content" rows="4" class="w-full"></textarea>
+          <label for="content" class="block text-sm font-medium text-gray-700 mb-1">الرسالة *</label>
+          <textarea id="content" pTextarea [(ngModel)]="messageForm.content" rows="4" class="w-full"></textarea>
         </div>
       </div>
       <ng-template pTemplate="footer">

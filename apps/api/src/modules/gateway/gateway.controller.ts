@@ -113,7 +113,7 @@ export class GatewayController {
   @ApiResponse({ status: 200, description: 'حالة Rate Limit', type: RateLimitStatusDto })
   async getRateLimitStatus(
     @Param('identifier') identifier: string,
-    @Query('type') type: string = 'api_key',
+    @Query('type') type = 'api_key',
   ): Promise<RateLimitStatusDto> {
     return this.gatewayService.checkRateLimit(identifier, type);
   }
