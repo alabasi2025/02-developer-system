@@ -239,7 +239,6 @@ export class MonitoringService {
       where: { id },
       data: {
         status: 'acknowledged',
-        acknowledgedBy: userId,
         acknowledgedAt: new Date(),
       },
     });
@@ -256,7 +255,6 @@ export class MonitoringService {
       where: { id },
       data: {
         status: 'resolved',
-        resolvedBy: userId,
         resolvedAt: new Date(),
         resolution,
       },

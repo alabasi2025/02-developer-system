@@ -113,9 +113,9 @@ export class MonitoringController {
   @ApiResponse({ status: 200, description: 'تم تأكيد الاستلام' })
   async acknowledgeAlert(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body('userId') userId: string,
+    @Body() data: { userId: string },
   ) {
-    return this.monitoringService.acknowledgeAlert(id, userId);
+    return this.monitoringService.acknowledgeAlert(id, data.userId);
   }
 
   @Put('alerts/:id/resolve')
