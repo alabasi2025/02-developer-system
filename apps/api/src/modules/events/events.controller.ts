@@ -52,16 +52,7 @@ export class EventsController {
     return this.eventsService.findAllEvents(query);
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'جلب حدث محدد', description: 'جلب تفاصيل حدث محدد مع حالة التسليم' })
-  @ApiParam({ name: 'id', description: 'معرف الحدث', type: 'string' })
-  @ApiResponse({ status: 200, description: 'تفاصيل الحدث', type: EventResponseDto })
-  @ApiResponse({ status: 404, description: 'الحدث غير موجود' })
-  async findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.eventsService.findOneEvent(id);
-  }
-
-  // ==================== Subscription Endpoints ====================
+  // ==================== Subscription Endpoints (Static routes first) ====================
 
   @Post('subscribe')
   @ApiOperation({ summary: 'إنشاء اشتراك جديد', description: 'الاشتراك في نوع معين من الأحداث' })
@@ -77,6 +68,15 @@ export class EventsController {
   async findAllSubscriptions(@Query() query: SubscriptionQueryDto) {
     return this.eventsService.findAllSubscriptions(query);
   }
+
+  @Post('retry-failed')
+  @ApiOperation({ summary: 'إعادة محاولة التسليمات الفاشلة', description: 'إعادة محاولة تسليم الأحداث الفاشلة' })
+  @ApiResponse({ status: 200, description: 'تم إعادة المحاولة' })
+  async retryFailed() {
+    return this.eventsService.retryFailedDeliveries();
+  }
+
+  // ==================== Dynamic routes (with :id parameter) ====================
 
   @Get('subscriptions/:id')
   @ApiOperation({ summary: 'جلب اشتراك محدد', description: 'جلب تفاصيل اشتراك محدد' })
@@ -109,12 +109,12 @@ export class EventsController {
     return this.eventsService.removeSubscription(id);
   }
 
-  // ==================== Admin Endpoints ====================
-
-  @Post('retry-failed')
-  @ApiOperation({ summary: 'إعادة محاولة التسليمات الفاشلة', description: 'إعادة محاولة تسليم الأحداث الفاشلة' })
-  @ApiResponse({ status: 200, description: 'تم إعادة المحاولة' })
-  async retryFailed() {
-    return this.eventsService.retryFailedDeliveries();
+  @Get(':id')
+  @ApiOperation({ summary: 'جلب حدث محدد', description: 'جلب تفاصيل حدث محدد مع حالة التسليم' })
+  @ApiParam({ name: 'id', description: 'معرف الحدث', type: 'string' })
+  @ApiResponse({ status: 200, description: 'تفاصيل الحدث', type: EventResponseDto })
+  @ApiResponse({ status: 404, description: 'الحدث غير موجود' })
+  async findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.eventsService.findOneEvent(id);
   }
 }
