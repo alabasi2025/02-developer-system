@@ -1,7 +1,7 @@
 # قائمة المهام - نظام المطور (Developer System)
 
 > آخر تحديث: 2025-12-18
-> نسبة الإنجاز الحالية: **~65%**
+> نسبة الإنجاز الحالية: **~92%**
 
 ---
 
@@ -14,15 +14,16 @@
 | نظام الأمان | JWT + RBAC + bcrypt | 0 | ✅ 100% |
 | Docker & CI/CD | Dockerfile + Compose + GitHub Actions | 0 | ✅ 100% |
 | Logging (JSON) | JSON Logger + Interceptors | 0 | ✅ 100% |
-| Unit Tests | 4 ملفات اختبار | تغطية 80%+ | 70% |
-| APIs الداخلية | 9 أنظمة | تصحيح المسارات | 70% |
-| APIs الخارجية | 4 APIs | تحسينات | 80% |
-| تكامل Acrel IoT | 0 | 5 Webhooks + MQTT | ❌ 0% |
-| بوابات الدفع | 3 جزئي | 3 + Fallback | 25% |
-| خدمات الرسائل | 1 جزئي | 5 + Fallback | 15% |
+| Unit Tests | 7 ملفات اختبار (92 اختبار) | 0 | ✅ 100% |
+| APIs الداخلية | 15 نظام | 0 | ✅ 100% |
+| APIs الخارجية | 4 APIs | 0 | ✅ 100% |
+| تكامل Acrel IoT | Webhooks + MQTT + Commands + Security | 0 | ✅ 100% |
+| بوابات الدفع | 6 بوابات + Fallback | 0 | ✅ 100% |
+| خدمات الرسائل | 6 مزودين + Templates + Fallback | 0 | ✅ 100% |
 | نظام الأحداث | Event Processor + Webhook Dispatcher + Retry Manager | 0 | ✅ 100% |
-| الذكاء الاصطناعي | 2 جزئي | 3 نماذج + تدريب | 30% |
+| API Gateway | Caching + Circuit Breaker + Rate Limiting | 0 | ✅ 100% |
 | المراقبة | Audit + Access + Error + Performance Logs | 0 | ✅ 100% |
+| الذكاء الاصطناعي | 2 جزئي | 3 نماذج + تدريب | 30% |
 
 ---
 
@@ -66,13 +67,74 @@
 - [x] إضافة `deletedAt` للجداول الرئيسية
 
 ### Unit Tests ✅
-- [x] `auth.service.spec.ts`
-- [x] `events.service.spec.ts`
-- [x] `integrations.service.spec.ts`
-- [x] `payments.service.spec.ts`
-- [x] `monitoring.service.spec.ts`
+- [x] `auth.service.spec.ts` (18 اختبار)
+- [x] `events.service.spec.ts` (12 اختبار)
+- [x] `integrations.service.spec.ts` (12 اختبار)
+- [x] `payments.service.spec.ts` (12 اختبار)
+- [x] `monitoring.service.spec.ts` (18 اختبار)
+- [x] `acrel-webhook.service.spec.ts` (10 اختبارات)
+- [x] `acrel-command.service.spec.ts` (10 اختبارات)
 
-### جداول قاعدة البيانات الجديدة ✅
+### تكامل Acrel IoT ✅
+- [x] `POST /api/v1/acrel/webhooks/meter-reading` - استقبال قراءة عداد جديدة
+- [x] `POST /api/v1/acrel/webhooks/alert` - استقبال تنبيه من العداد
+- [x] `POST /api/v1/acrel/webhooks/status-change` - استقبال تغيير حالة العداد
+- [x] `POST /api/v1/acrel/webhooks/disconnect-confirm` - تأكيد تنفيذ أمر الفصل
+- [x] `POST /api/v1/acrel/webhooks/reconnect-confirm` - تأكيد تنفيذ أمر الوصل
+- [x] HMAC Signature - التحقق من توقيع الطلب
+- [x] IP Whitelist - قبول الطلبات من IPs محددة فقط
+- [x] Timestamp Validation - رفض الطلبات القديمة (> 5 دقائق)
+- [x] Idempotency - منع معالجة نفس الحدث مرتين
+- [x] إنشاء `AcrelMQTTService`
+- [x] إنشاء `AcrelCommandService`
+- [x] إنشاء `AcrelWebhookService`
+- [x] إنشاء `AcrelSecurityService`
+
+### APIs الداخلية ✅
+| النظام | المسار | الحالة |
+|--------|--------|--------|
+| النظام الأم | `/api/core/*` | ✅ موجود |
+| نظام الأصول | `/api/assets/*` | ✅ موجود |
+| نظام العملاء | `/api/customers/*` | ✅ موجود |
+| نظام الفوترة | `/api/billing/*` | ✅ موجود |
+| نظام العدادات | `/api/meters/*` | ✅ موجود |
+| نظام الدعم | `/api/support/*` | ✅ موجود |
+| نظام التقارير | `/api/reports/*` | ✅ موجود |
+| نظام الموظفين | `/api/employees/*` | ✅ موجود |
+| تطبيق الجوال | `/api/mobile/*` | ✅ موجود |
+| العمليات الميدانية | `/api/field/*` | ✅ مضاف |
+| الصيانة | `/api/maintenance/*` | ✅ مضاف |
+| المراقبة والتحكم | `/api/scada/*` | ✅ مضاف |
+| المخزون | `/api/inventory/*` | ✅ مضاف |
+| الموارد البشرية | `/api/hr/*` | ✅ مضاف |
+| المالية | `/api/finance/*` | ✅ مضاف |
+
+### API Gateway ✅
+- [x] Response Caching (`CacheService`)
+- [x] Request/Response Transformation
+- [x] Circuit Breaker Pattern (`CircuitBreakerService`)
+- [x] Rate Limiting
+- [x] Health Checks
+
+### بوابات الدفع ✅
+- [x] STC Pay
+- [x] Mada
+- [x] Stripe
+- [x] Flooss (فلوس)
+- [x] Jawali (جوالي)
+- [x] PayPal
+- [x] Fallback Logic (`PaymentFallbackService`)
+
+### خدمات الرسائل ✅
+- [x] Unifonic (SMS)
+- [x] Twilio (SMS)
+- [x] WhatsApp Business API
+- [x] SendGrid (Email)
+- [x] Firebase FCM (Push)
+- [x] SMTP (Email)
+- [x] Message Templates (`MessageTemplatesService`)
+
+### جداول قاعدة البيانات ✅
 - [x] `dev_dead_letter_queue`
 - [x] `dev_audit_logs`
 - [x] `dev_access_logs`
@@ -81,68 +143,9 @@
 
 ---
 
-## 🔴 الأولوية 1: حرجة (Critical)
-
-### 1.1 تكامل Acrel IoT
-> **المرجع:** `docs/02_نظام_المطور.md` - قسم "Webhooks من Acrel IoT-EMS"
-
-#### Webhooks لاستقبال الأحداث من Acrel:
-- [ ] `POST /api/v1/acrel/webhooks/meter-reading` - استقبال قراءة عداد جديدة
-- [ ] `POST /api/v1/acrel/webhooks/alert` - استقبال تنبيه من العداد
-- [ ] `POST /api/v1/acrel/webhooks/status-change` - استقبال تغيير حالة العداد
-- [ ] `POST /api/v1/acrel/webhooks/disconnect-confirm` - تأكيد تنفيذ أمر الفصل
-- [ ] `POST /api/v1/acrel/webhooks/reconnect-confirm` - تأكيد تنفيذ أمر الوصل
-
-#### أمان Webhooks:
-- [ ] HMAC Signature - التحقق من توقيع الطلب
-- [ ] IP Whitelist - قبول الطلبات من IPs محددة فقط
-- [ ] Timestamp Validation - رفض الطلبات القديمة (> 5 دقائق)
-- [ ] Idempotency - منع معالجة نفس الحدث مرتين
-
-#### خدمات MQTT:
-- [ ] إنشاء `AcrelMQTTListener` Service
-- [ ] إنشاء `AcrelCommandPublisher` Service
-- [ ] تثبيت مكتبة MQTT (`mqtt` أو `@nestjs/mqtt`)
-
----
-
-## 🟠 الأولوية 2: مهمة (Important)
-
-### 2.1 تصحيح APIs الداخلية
-| النظام | المسار | الحالة |
-|--------|--------|--------|
-| النظام الأم | `/api/core/*` | ✅ موجود |
-| نظام الأصول | `/api/assets/*` | ✅ موجود |
-| العمليات الميدانية | `/api/field/*` | ❌ مطلوب إضافة |
-| الصيانة | `/api/maintenance/*` | ❌ مطلوب إضافة |
-| المراقبة والتحكم | `/api/scada/*` | ❌ مطلوب إضافة |
-| المخزون | `/api/inventory/*` | ❌ مطلوب إضافة |
-| الموارد البشرية | `/api/hr/*` | ❌ مطلوب إضافة |
-| المالية | `/api/finance/*` | ❌ مطلوب إضافة |
-
-### 2.2 تحسين API Gateway
-- [ ] Response Caching
-- [ ] Request/Response Transformation
-- [ ] Circuit Breaker Pattern
-
----
-
 ## 🟡 الأولوية 3: تحسينات (Improvements)
 
-### 3.1 بوابات الدفع
-- [ ] إضافة فلوسك (Flooss)
-- [ ] إضافة جوالي (Jawali)
-- [ ] إضافة PayPal
-- [ ] تنفيذ Fallback Logic
-
-### 3.2 خدمات الرسائل
-- [ ] إضافة Twilio (SMS)
-- [ ] إضافة WhatsApp Business API
-- [ ] إضافة SendGrid (Email)
-- [ ] إضافة Firebase FCM (Push)
-- [ ] تنفيذ Fallback Logic
-
-### 3.3 الذكاء الاصطناعي
+### 3.1 الذكاء الاصطناعي
 - [ ] نموذج التنبؤ بالاستهلاك
 - [ ] نموذج كشف الأعطال
 - [ ] نموذج تحسين الشبكة
@@ -168,55 +171,44 @@
 
 ### الملفات المضافة في هذا التحديث:
 ```
-apps/api/src/modules/auth/
-├── auth.module.ts
-├── auth.service.ts
-├── auth.service.spec.ts
-├── strategies/
-│   ├── jwt.strategy.ts
-│   └── api-key.strategy.ts
-├── guards/
-│   ├── jwt-auth.guard.ts
-│   ├── api-key-auth.guard.ts
-│   └── roles.guard.ts
-├── decorators/
-│   ├── public.decorator.ts
-│   ├── roles.decorator.ts
-│   ├── permissions.decorator.ts
-│   └── current-user.decorator.ts
-└── index.ts
+apps/api/src/modules/acrel/
+├── acrel.module.ts
+├── controllers/
+│   ├── acrel-webhooks.controller.ts
+│   └── acrel-commands.controller.ts
+├── services/
+│   ├── acrel-webhook.service.ts
+│   ├── acrel-command.service.ts
+│   ├── acrel-mqtt.service.ts
+│   └── acrel-security.service.ts
+└── dto/
+    ├── acrel-webhook.dto.ts
+    └── acrel-command.dto.ts
 
-apps/api/src/modules/events/services/
-├── event-processor.service.ts
-├── webhook-dispatcher.service.ts
-└── retry-manager.service.ts
+apps/api/src/modules/gateway/services/
+├── cache.service.ts
+└── circuit-breaker.service.ts
 
-apps/api/src/common/
-├── logger/
-│   ├── json-logger.service.ts
-│   └── logger.module.ts
-└── interceptors/
-    ├── logging.interceptor.ts
-    └── audit.interceptor.ts
+apps/api/src/modules/payments/providers/
+├── payment-providers.service.ts
+└── payment-fallback.service.ts
 
-apps/api/src/prisma/
-└── soft-delete.middleware.ts
+apps/api/src/modules/messages/providers/
+├── message-providers.service.ts
+└── message-templates.service.ts
 
-.github/workflows/
-└── ci.yml
-
-docker-compose.yml
-docker-compose.prod.yml
-.dockerignore
-.env.example
+apps/api/tests/
+├── acrel-webhook.service.spec.ts
+└── acrel-command.service.spec.ts
 ```
 
-### الجداول المضافة في Prisma Schema:
-- `dev_dead_letter_queue`
-- `dev_audit_logs` (مكرر - يجب حذف أحدهما)
-- `dev_access_logs`
-- `dev_error_logs`
-- `dev_performance_logs`
+### الأنظمة الداخلية المضافة:
+- FIELD (العمليات الميدانية) - Port 3011
+- MAINTENANCE (الصيانة) - Port 3012
+- SCADA (المراقبة والتحكم) - Port 3013
+- INVENTORY (المخزون) - Port 3014
+- HR (الموارد البشرية) - Port 3015
+- FINANCE (المالية) - Port 3016
 
 ### الجداول المحدثة (إضافة deletedAt):
 - `DevIntegration`

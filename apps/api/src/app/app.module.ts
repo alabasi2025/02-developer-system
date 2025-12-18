@@ -23,6 +23,7 @@ import { PaymentsModule } from '../modules/payments/payments.module';
 import { MessagesModule } from '../modules/messages/messages.module';
 import { IotModule } from '../modules/iot/iot.module';
 import { AiModule } from '../modules/ai/ai.module';
+import { AcrelModule } from '../modules/acrel/acrel.module';
 
 // Phase 2 Modules - APIs Layer
 import { InternalApiModule } from '../modules/internal-api/internal-api.module';
@@ -60,6 +61,7 @@ import { ExternalApiModule } from '../modules/external-api/external-api.module';
     MessagesModule,
     IotModule,
     AiModule,
+    AcrelModule,
 
     // Phase 2 - APIs Layer
     InternalApiModule,

@@ -1,6 +1,8 @@
 import { Injectable, Logger, BadRequestException, HttpException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ApiKeysService } from '../api-keys/api-keys.service';
+import { CacheService } from './services/cache.service';
+import { CircuitBreakerService, CircuitState } from './services/circuit-breaker.service';
 import {
   ProxyRequestDto,
   ProxyResponseDto,
@@ -31,6 +33,8 @@ export class GatewayService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly apiKeysService: ApiKeysService,
+    private readonly cacheService: CacheService,
+    private readonly circuitBreaker: CircuitBreakerService,
   ) {}
 
   // ==================== Proxy ====================
@@ -55,6 +59,28 @@ export class GatewayService {
     }
 
     const url = `${systemConfig.baseUrl}${path}`;
+
+    // Check circuit breaker
+    if (!this.circuitBreaker.canExecute(system)) {
+      this.logger.warn(`Circuit breaker open for system: ${system}`);
+      return {
+        success: false,
+        statusCode: 503,
+        error: `النظام ${systemConfig.nameAr} غير متاح مؤقتاً`,
+        responseTime: 0,
+      };
+    }
+
+    // Check cache for GET requests
+    if (method.toUpperCase() === 'GET' && this.cacheService.isCacheable(method, path)) {
+      const cacheKey = this.cacheService.generateCacheKey(system, path, query);
+      const cachedResponse = await this.cacheService.get<ProxyResponseDto>(cacheKey);
+      
+      if (cachedResponse) {
+        this.logger.debug(`Cache hit for ${system}${path}`);
+        return { ...cachedResponse, fromCache: true };
+      }
+    }
     
     try {
       const config: AxiosRequestConfig = {
@@ -89,12 +115,27 @@ export class GatewayService {
         responseBody: response.data,
       });
 
-      return {
+      // Record success in circuit breaker
+      if (response.status < 400) {
+        this.circuitBreaker.recordSuccess(system);
+      } else if (response.status >= 500) {
+        this.circuitBreaker.recordFailure(system, `HTTP ${response.status}`);
+      }
+
+      const result: ProxyResponseDto = {
         success: response.status < 400,
         statusCode: response.status,
         data: response.data,
         responseTime,
       };
+
+      // Cache successful GET responses
+      if (method.toUpperCase() === 'GET' && response.status < 400 && this.cacheService.isCacheable(method, path)) {
+        const cacheKey = this.cacheService.generateCacheKey(system, path, query);
+        await this.cacheService.set(cacheKey, result);
+      }
+
+      return result;
     } catch (error: any) {
       const responseTime = Date.now() - startTime;
 
@@ -111,6 +152,9 @@ export class GatewayService {
         requestBody: body,
         errorMessage: error.message,
       });
+
+      // Record failure in circuit breaker
+      this.circuitBreaker.recordFailure(system, error.message);
 
       return {
         success: false,

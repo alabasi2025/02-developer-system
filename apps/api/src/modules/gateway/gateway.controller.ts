@@ -20,6 +20,8 @@ import {
 } from '@nestjs/swagger';
 import { Request } from 'express';
 import { GatewayService } from './gateway.service';
+import { CacheService } from './services/cache.service';
+import { CircuitBreakerService } from './services/circuit-breaker.service';
 import {
   ProxyResponseDto,
   RateLimitConfigDto,
@@ -33,7 +35,11 @@ import {
 @ApiBearerAuth()
 @Controller('gateway')
 export class GatewayController {
-  constructor(private readonly gatewayService: GatewayService) {}
+  constructor(
+    private readonly gatewayService: GatewayService,
+    private readonly cacheService: CacheService,
+    private readonly circuitBreaker: CircuitBreakerService,
+  ) {}
 
   // ==================== Proxy Endpoints ====================
 
@@ -153,5 +159,65 @@ export class GatewayController {
   @ApiResponse({ status: 200, description: 'قائمة الأنظمة' })
   async getSystemsList() {
     return this.gatewayService.getAllSystemConfigs();
+  }
+
+  // ==================== Cache Management ====================
+
+  @Get('cache/stats')
+  @ApiOperation({ summary: 'إحصائيات الكاش', description: 'جلب إحصائيات الكاش' })
+  @ApiResponse({ status: 200, description: 'إحصائيات الكاش' })
+  getCacheStats() {
+    return this.cacheService.getStats();
+  }
+
+  @Post('cache/clear')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'مسح الكاش', description: 'مسح جميع البيانات المخزنة مؤقتاً' })
+  @ApiResponse({ status: 200, description: 'تم مسح الكاش' })
+  async clearCache() {
+    await this.cacheService.clear();
+    return { message: 'تم مسح الكاش بنجاح' };
+  }
+
+  @Post('cache/invalidate/:pattern')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'إبطال كاش محدد', description: 'إبطال الكاش المطابق لنمط معين' })
+  @ApiParam({ name: 'pattern', description: 'نمط المفتاح (يدعم *)' })
+  @ApiResponse({ status: 200, description: 'عدد العناصر المحذوفة' })
+  async invalidateCache(@Param('pattern') pattern: string) {
+    const count = await this.cacheService.deletePattern(pattern);
+    return { message: `تم حذف ${count} عنصر من الكاش` };
+  }
+
+  // ==================== Circuit Breaker ====================
+
+  @Get('circuits')
+  @ApiOperation({ summary: 'حالة جميع الدوائر', description: 'جلب حالة جميع Circuit Breakers' })
+  @ApiResponse({ status: 200, description: 'قائمة الدوائر وحالاتها' })
+  getAllCircuits() {
+    return this.circuitBreaker.getAllCircuits();
+  }
+
+  @Get('circuits/:system')
+  @ApiOperation({ summary: 'حالة دائرة محددة', description: 'جلب حالة Circuit Breaker لنظام محدد' })
+  @ApiParam({ name: 'system', description: 'معرف النظام' })
+  @ApiResponse({ status: 200, description: 'حالة الدائرة' })
+  getCircuitState(@Param('system') system: string) {
+    const stats = this.circuitBreaker.getStats(system);
+    return {
+      system,
+      state: this.circuitBreaker.getState(system),
+      stats,
+    };
+  }
+
+  @Post('circuits/:system/reset')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'إعادة تعيين دائرة', description: 'إعادة تعيين Circuit Breaker لنظام محدد' })
+  @ApiParam({ name: 'system', description: 'معرف النظام' })
+  @ApiResponse({ status: 200, description: 'تم إعادة التعيين' })
+  resetCircuit(@Param('system') system: string) {
+    this.circuitBreaker.reset(system);
+    return { message: `تم إعادة تعيين الدائرة للنظام: ${system}` };
   }
 }

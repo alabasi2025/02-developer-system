@@ -1,20 +1,20 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { PaymentsService } from './payments.service';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PaymentsService, ProcessPaymentDto, RefundPaymentDto } from '../src/modules/payments/payments.service';
+import { PrismaService } from '../src/prisma/prisma.service';
+import { EventsService } from '../src/modules/events/events.service';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 
 describe('PaymentsService', () => {
   let service: PaymentsService;
   let prismaService: PrismaService;
+  let eventsService: EventsService;
 
   const mockPrismaService = {
     devPaymentGateway: {
       create: jest.fn(),
       findMany: jest.fn(),
       findUnique: jest.fn(),
-      findFirst: jest.fn(),
       update: jest.fn(),
-      delete: jest.fn(),
-      count: jest.fn(),
     },
     devPaymentTransaction: {
       create: jest.fn(),
@@ -25,257 +25,257 @@ describe('PaymentsService', () => {
     },
   };
 
+  const mockEventsService = {
+    publish: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PaymentsService,
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: EventsService, useValue: mockEventsService },
       ],
     }).compile();
 
     service = module.get<PaymentsService>(PaymentsService);
     prismaService = module.get<PrismaService>(PrismaService);
+    eventsService = module.get<EventsService>(EventsService);
+
+    // Reset all mocks
+    jest.clearAllMocks();
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
+  it('should be defined', () => {
+    expect(service).toBeDefined();
   });
 
   describe('createGateway', () => {
     it('should create a payment gateway', async () => {
       const gatewayData = {
-        name: 'STC Pay',
-        code: 'stc_pay',
-        type: 'local',
-        config: { merchantId: '12345' },
+        name: 'Test Gateway',
+        provider: 'stripe',
+        apiUrl: 'https://api.stripe.com',
+        credentials: { apiKey: 'sk_test_xxx' },
+        supportedCurrencies: ['SAR', 'USD'],
       };
 
-      const createdGateway = {
+      const mockGateway = {
         id: 'gateway-123',
         ...gatewayData,
         isActive: true,
         createdAt: new Date(),
       };
 
-      mockPrismaService.devPaymentGateway.create.mockResolvedValue(createdGateway);
+      mockPrismaService.devPaymentGateway.create.mockResolvedValue(mockGateway);
 
       const result = await service.createGateway(gatewayData);
 
       expect(result.id).toBe('gateway-123');
-      expect(result.name).toBe('STC Pay');
-      expect(result.code).toBe('stc_pay');
+      expect(result.name).toBe('Test Gateway');
+      expect(result.hasCredentials).toBe(true);
+      expect(result.credentials).toBeUndefined(); // Should be sanitized
     });
   });
 
-  describe('getGateways', () => {
-    it('should return all payment gateways', async () => {
-      const gateways = [
-        { id: 'gw-1', name: 'STC Pay', code: 'stc_pay', isActive: true },
-        { id: 'gw-2', name: 'Mada', code: 'mada', isActive: true },
+  describe('findAllGateways', () => {
+    it('should return all active gateways', async () => {
+      const mockGateways = [
+        { id: 'gw-1', name: 'Gateway 1', provider: 'stripe', credentials: {}, isActive: true },
+        { id: 'gw-2', name: 'Gateway 2', provider: 'mada', credentials: {}, isActive: true },
       ];
 
-      mockPrismaService.devPaymentGateway.findMany.mockResolvedValue(gateways);
-      mockPrismaService.devPaymentGateway.count.mockResolvedValue(2);
+      mockPrismaService.devPaymentGateway.findMany.mockResolvedValue(mockGateways);
 
-      const result = await service.getGateways({ page: 1, limit: 10 });
+      const result = await service.findAllGateways({ isActive: true });
 
-      expect(result.data).toHaveLength(2);
-      expect(result.total).toBe(2);
-    });
-
-    it('should filter active gateways', async () => {
-      const gateways = [
-        { id: 'gw-1', name: 'STC Pay', code: 'stc_pay', isActive: true },
-      ];
-
-      mockPrismaService.devPaymentGateway.findMany.mockResolvedValue(gateways);
-      mockPrismaService.devPaymentGateway.count.mockResolvedValue(1);
-
-      const result = await service.getGateways({ page: 1, limit: 10, isActive: true });
-
-      expect(result.data).toHaveLength(1);
+      expect(result).toHaveLength(2);
+      expect(mockPrismaService.devPaymentGateway.findMany).toHaveBeenCalledWith({
+        where: { isActive: true },
+        orderBy: { createdAt: 'desc' },
+      });
     });
   });
 
   describe('processPayment', () => {
     it('should process a payment successfully', async () => {
-      const paymentData = {
-        gatewayCode: 'stc_pay',
-        amount: 100.00,
+      const paymentData: ProcessPaymentDto = {
+        gatewayId: 'gateway-123',
+        amount: 100,
         currency: 'SAR',
         customerId: 'customer-123',
-        orderId: 'order-456',
       };
 
-      const gateway = {
+      const mockGateway = {
         id: 'gateway-123',
-        code: 'stc_pay',
+        name: 'Test Gateway',
+        provider: 'stripe',
+        apiUrl: 'https://api.stripe.com',
+        credentials: { apiKey: 'sk_test_xxx' },
+        supportedCurrencies: ['SAR', 'USD'],
         isActive: true,
-        config: { apiKey: 'test-key' },
       };
 
-      const transaction = {
+      const mockTransaction = {
         id: 'txn-123',
         gatewayId: 'gateway-123',
-        amount: 100.00,
+        amount: 100,
         currency: 'SAR',
         status: 'pending',
-        createdAt: new Date(),
+        type: 'payment',
       };
 
-      mockPrismaService.devPaymentGateway.findFirst.mockResolvedValue(gateway);
-      mockPrismaService.devPaymentTransaction.create.mockResolvedValue(transaction);
+      mockPrismaService.devPaymentGateway.findUnique.mockResolvedValue(mockGateway);
+      mockPrismaService.devPaymentTransaction.create.mockResolvedValue(mockTransaction);
       mockPrismaService.devPaymentTransaction.update.mockResolvedValue({
-        ...transaction,
-        status: 'completed',
+        ...mockTransaction,
+        status: 'pending',
       });
+      mockEventsService.publish.mockResolvedValue(undefined);
 
       const result = await service.processPayment(paymentData);
 
-      expect(result).toBeDefined();
-      expect(result.status).toBe('completed');
+      expect(result.transactionId).toBe('txn-123');
+      expect(result.status).toBe('pending');
     });
 
     it('should throw error for inactive gateway', async () => {
-      const paymentData = {
-        gatewayCode: 'inactive_gateway',
-        amount: 100.00,
+      const paymentData: ProcessPaymentDto = {
+        gatewayId: 'gateway-123',
+        amount: 100,
         currency: 'SAR',
       };
 
-      mockPrismaService.devPaymentGateway.findFirst.mockResolvedValue(null);
-
-      await expect(service.processPayment(paymentData)).rejects.toThrow();
-    });
-
-    it('should handle payment failure', async () => {
-      const paymentData = {
-        gatewayCode: 'stc_pay',
-        amount: 100.00,
-        currency: 'SAR',
-      };
-
-      const gateway = {
+      mockPrismaService.devPaymentGateway.findUnique.mockResolvedValue({
         id: 'gateway-123',
-        code: 'stc_pay',
+        isActive: false,
+        supportedCurrencies: ['SAR'],
+      });
+
+      await expect(service.processPayment(paymentData)).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw error for unsupported currency', async () => {
+      const paymentData: ProcessPaymentDto = {
+        gatewayId: 'gateway-123',
+        amount: 100,
+        currency: 'EUR',
+      };
+
+      mockPrismaService.devPaymentGateway.findUnique.mockResolvedValue({
+        id: 'gateway-123',
         isActive: true,
-      };
-
-      const transaction = {
-        id: 'txn-123',
-        status: 'pending',
-      };
-
-      mockPrismaService.devPaymentGateway.findFirst.mockResolvedValue(gateway);
-      mockPrismaService.devPaymentTransaction.create.mockResolvedValue(transaction);
-      mockPrismaService.devPaymentTransaction.update.mockResolvedValue({
-        ...transaction,
-        status: 'failed',
-        errorMessage: 'Insufficient funds',
+        supportedCurrencies: ['SAR', 'USD'],
       });
 
-      const result = await service.processPayment(paymentData);
-
-      expect(result.status).toBe('failed');
-    });
-  });
-
-  describe('getTransactions', () => {
-    it('should return paginated transactions', async () => {
-      const transactions = [
-        { id: 'txn-1', amount: 100, status: 'completed' },
-        { id: 'txn-2', amount: 200, status: 'pending' },
-      ];
-
-      mockPrismaService.devPaymentTransaction.findMany.mockResolvedValue(transactions);
-      mockPrismaService.devPaymentTransaction.count.mockResolvedValue(2);
-
-      const result = await service.getTransactions({ page: 1, limit: 10 });
-
-      expect(result.data).toHaveLength(2);
-      expect(result.total).toBe(2);
-    });
-
-    it('should filter by status', async () => {
-      const transactions = [
-        { id: 'txn-1', amount: 100, status: 'completed' },
-      ];
-
-      mockPrismaService.devPaymentTransaction.findMany.mockResolvedValue(transactions);
-      mockPrismaService.devPaymentTransaction.count.mockResolvedValue(1);
-
-      const result = await service.getTransactions({ 
-        page: 1, 
-        limit: 10, 
-        status: 'completed' 
-      });
-
-      expect(result.data).toHaveLength(1);
+      await expect(service.processPayment(paymentData)).rejects.toThrow(BadRequestException);
     });
   });
 
   describe('refundPayment', () => {
-    it('should process refund successfully', async () => {
-      const transactionId = 'txn-123';
-      const originalTransaction = {
-        id: transactionId,
+    it('should refund a payment successfully', async () => {
+      const refundData: RefundPaymentDto = {
+        transactionId: 'txn-123',
         amount: 100,
-        status: 'completed',
+        reason: 'Customer request',
+      };
+
+      const mockTransaction = {
+        id: 'txn-123',
         gatewayId: 'gateway-123',
+        amount: 100,
+        currency: 'SAR',
+        status: 'completed',
+        gateway: { id: 'gateway-123', name: 'Test Gateway' },
       };
 
-      const gateway = {
-        id: 'gateway-123',
-        code: 'stc_pay',
-        isActive: true,
-      };
-
-      mockPrismaService.devPaymentTransaction.findUnique.mockResolvedValue(originalTransaction);
-      mockPrismaService.devPaymentGateway.findUnique.mockResolvedValue(gateway);
-      mockPrismaService.devPaymentTransaction.update.mockResolvedValue({
-        ...originalTransaction,
-        status: 'refunded',
+      mockPrismaService.devPaymentTransaction.findUnique.mockResolvedValue(mockTransaction);
+      mockPrismaService.devPaymentTransaction.create.mockResolvedValue({
+        id: 'refund-123',
+        type: 'refund',
+        status: 'pending',
       });
+      mockPrismaService.devPaymentTransaction.update.mockResolvedValue({
+        id: 'refund-123',
+        status: 'completed',
+      });
+      mockEventsService.publish.mockResolvedValue(undefined);
 
-      const result = await service.refundPayment(transactionId, { amount: 100 });
+      const result = await service.refundPayment(refundData);
 
-      expect(result.status).toBe('refunded');
+      expect(result.refundId).toBe('refund-123');
+      expect(result.originalTransactionId).toBe('txn-123');
+      expect(result.status).toBe('completed');
     });
 
     it('should throw error for non-existent transaction', async () => {
       mockPrismaService.devPaymentTransaction.findUnique.mockResolvedValue(null);
 
-      await expect(service.refundPayment('non-existent', { amount: 100 }))
-        .rejects.toThrow();
+      await expect(service.refundPayment({ transactionId: 'non-existent' })).rejects.toThrow(NotFoundException);
     });
 
-    it('should throw error for already refunded transaction', async () => {
-      const transaction = {
+    it('should throw error for non-completed transaction', async () => {
+      mockPrismaService.devPaymentTransaction.findUnique.mockResolvedValue({
         id: 'txn-123',
-        status: 'refunded',
-      };
+        status: 'pending',
+      });
 
-      mockPrismaService.devPaymentTransaction.findUnique.mockResolvedValue(transaction);
-
-      await expect(service.refundPayment('txn-123', { amount: 100 }))
-        .rejects.toThrow();
+      await expect(service.refundPayment({ transactionId: 'txn-123' })).rejects.toThrow(BadRequestException);
     });
   });
 
-  describe('getPaymentStats', () => {
-    it('should return payment statistics', async () => {
-      mockPrismaService.devPaymentTransaction.count
-        .mockResolvedValueOnce(100) // total
-        .mockResolvedValueOnce(80)  // completed
-        .mockResolvedValueOnce(15)  // pending
-        .mockResolvedValueOnce(5);  // failed
+  describe('findAllTransactions', () => {
+    it('should return paginated transactions', async () => {
+      const mockTransactions = [
+        { id: 'txn-1', amount: 100, status: 'completed', gateway: { id: 'gw-1', name: 'Gateway 1' } },
+        { id: 'txn-2', amount: 200, status: 'pending', gateway: { id: 'gw-1', name: 'Gateway 1' } },
+      ];
 
-      const result = await service.getPaymentStats();
+      mockPrismaService.devPaymentTransaction.findMany.mockResolvedValue(mockTransactions);
+      mockPrismaService.devPaymentTransaction.count.mockResolvedValue(2);
 
-      expect(result.total).toBe(100);
-      expect(result.completed).toBe(80);
-      expect(result.pending).toBe(15);
-      expect(result.failed).toBe(5);
+      const result = await service.findAllTransactions({ page: 1, limit: 10 });
+
+      expect(result.data).toHaveLength(2);
+      expect(result.meta.total).toBe(2);
+      expect(result.meta.page).toBe(1);
+    });
+
+    it('should filter transactions by status', async () => {
+      mockPrismaService.devPaymentTransaction.findMany.mockResolvedValue([]);
+      mockPrismaService.devPaymentTransaction.count.mockResolvedValue(0);
+
+      await service.findAllTransactions({ status: 'completed', page: 1, limit: 10 });
+
+      expect(mockPrismaService.devPaymentTransaction.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ status: 'completed' }),
+        }),
+      );
+    });
+  });
+
+  describe('findOneTransaction', () => {
+    it('should return a single transaction', async () => {
+      const mockTransaction = {
+        id: 'txn-123',
+        amount: 100,
+        status: 'completed',
+        gateway: { id: 'gw-1', name: 'Gateway 1', provider: 'stripe' },
+      };
+
+      mockPrismaService.devPaymentTransaction.findUnique.mockResolvedValue(mockTransaction);
+
+      const result = await service.findOneTransaction('txn-123');
+
+      expect(result.id).toBe('txn-123');
+      expect(result.gateway.name).toBe('Gateway 1');
+    });
+
+    it('should throw error for non-existent transaction', async () => {
+      mockPrismaService.devPaymentTransaction.findUnique.mockResolvedValue(null);
+
+      await expect(service.findOneTransaction('non-existent')).rejects.toThrow(NotFoundException);
     });
   });
 });

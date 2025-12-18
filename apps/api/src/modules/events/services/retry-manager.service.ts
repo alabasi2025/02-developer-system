@@ -93,7 +93,7 @@ export class RetryManagerService implements OnModuleInit, OnModuleDestroy {
     return this.prisma.devWebhookDelivery.findMany({
       where: {
         status: 'failed',
-        attempts: { lt: 5 },
+        attemptCount: { lt: 5 },
         nextRetryAt: { lte: new Date() },
       },
       take: 100,
@@ -185,7 +185,7 @@ export class RetryManagerService implements OnModuleInit, OnModuleDestroy {
   }> {
     const [pendingWebhooks, failedEvents, deadLetterCount] = await Promise.all([
       this.prisma.devWebhookDelivery.count({
-        where: { status: 'failed', attempts: { lt: 5 } },
+        where: { status: 'failed', attemptCount: { lt: 5 } },
       }),
       this.prisma.devEvent.count({
         where: { status: 'failed', retryCount: { lt: 3 } },

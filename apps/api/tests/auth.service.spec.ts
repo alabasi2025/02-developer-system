@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
-import { AuthService, JwtPayload, ValidatedUser } from './auth.service';
-import { PrismaService } from '../../prisma/prisma.service';
+import { AuthService, JwtPayload, ValidatedUser } from '../src/modules/auth/auth.service';
+import { PrismaService } from '../src/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 
 describe('AuthService', () => {

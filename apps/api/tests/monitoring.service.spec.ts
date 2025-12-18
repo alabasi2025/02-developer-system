@@ -1,15 +1,35 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { MonitoringService } from './monitoring.service';
-import { PrismaService } from '../../prisma/prisma.service';
+import { MonitoringService } from '../src/modules/monitoring/monitoring.service';
+import { PrismaService } from '../src/prisma/prisma.service';
+import { NotFoundException } from '@nestjs/common';
 
 describe('MonitoringService', () => {
   let service: MonitoringService;
   let prismaService: PrismaService;
 
   const mockPrismaService = {
-    devSystemLog: {
+    $queryRaw: jest.fn(),
+    devRequestLog: {
+      count: jest.fn(),
+      aggregate: jest.fn(),
+      groupBy: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+    },
+    devAuditLog: {
       create: jest.fn(),
       findMany: jest.fn(),
+      count: jest.fn(),
+    },
+    devEvent: {
+      count: jest.fn(),
+      groupBy: jest.fn(),
+    },
+    devIntegration: {
+      count: jest.fn(),
+      findMany: jest.fn(),
+    },
+    devApiKey: {
       count: jest.fn(),
     },
     devAlert: {
@@ -19,19 +39,9 @@ describe('MonitoringService', () => {
       update: jest.fn(),
       count: jest.fn(),
     },
-    devMetric: {
+    devSystemMetric: {
       create: jest.fn(),
       findMany: jest.fn(),
-      groupBy: jest.fn(),
-    },
-    devIntegration: {
-      count: jest.fn(),
-    },
-    devEvent: {
-      count: jest.fn(),
-    },
-    devPaymentTransaction: {
-      count: jest.fn(),
     },
   };
 
@@ -45,100 +55,78 @@ describe('MonitoringService', () => {
 
     service = module.get<MonitoringService>(MonitoringService);
     prismaService = module.get<PrismaService>(PrismaService);
-  });
 
-  afterEach(() => {
+    // Reset all mocks
     jest.clearAllMocks();
   });
 
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
+
   describe('getHealth', () => {
-    it('should return healthy status', async () => {
+    it('should return healthy status when database is connected', async () => {
+      mockPrismaService.$queryRaw.mockResolvedValue([{ '?column?': 1 }]);
+
       const result = await service.getHealth();
 
-      expect(result).toBeDefined();
       expect(result.status).toBe('healthy');
-      expect(result.timestamp).toBeDefined();
-      expect(result.services).toBeDefined();
+      expect(result.services.database.status).toBe('healthy');
+      expect(result.services.api.status).toBe('healthy');
     });
 
-    it('should include service statuses', async () => {
+    it('should return degraded status when database is down', async () => {
+      mockPrismaService.$queryRaw.mockRejectedValue(new Error('Connection failed'));
+
       const result = await service.getHealth();
 
-      expect(result.services).toHaveProperty('database');
-      expect(result.services).toHaveProperty('redis');
+      expect(result.status).toBe('degraded');
+      expect(result.services.database.status).toBe('unhealthy');
     });
   });
 
   describe('getMetrics', () => {
     it('should return system metrics', async () => {
-      mockPrismaService.devIntegration.count.mockResolvedValue(10);
-      mockPrismaService.devEvent.count.mockResolvedValue(1000);
-      mockPrismaService.devPaymentTransaction.count.mockResolvedValue(500);
+      mockPrismaService.devRequestLog.count.mockResolvedValue(100);
+      mockPrismaService.devRequestLog.aggregate.mockResolvedValue({ _avg: { responseTime: 150 } });
+      mockPrismaService.devRequestLog.groupBy.mockResolvedValue([]);
+      mockPrismaService.devEvent.count.mockResolvedValue(50);
+      mockPrismaService.devIntegration.count.mockResolvedValue(5);
+      mockPrismaService.devApiKey.count.mockResolvedValue(10);
 
       const result = await service.getMetrics();
 
       expect(result).toBeDefined();
-      expect(result.integrations).toBe(10);
-      expect(result.events).toBe(1000);
-      expect(result.transactions).toBe(500);
-    });
-
-    it('should include memory usage', async () => {
-      mockPrismaService.devIntegration.count.mockResolvedValue(0);
-      mockPrismaService.devEvent.count.mockResolvedValue(0);
-      mockPrismaService.devPaymentTransaction.count.mockResolvedValue(0);
-
-      const result = await service.getMetrics();
-
-      expect(result.memory).toBeDefined();
-      expect(result.memory.heapUsed).toBeDefined();
-      expect(result.memory.heapTotal).toBeDefined();
+      expect(result.requests).toBeDefined();
+      expect(result.events).toBeDefined();
     });
   });
 
   describe('getLogs', () => {
     it('should return paginated logs', async () => {
-      const logs = [
-        { id: 'log-1', level: 'info', message: 'Test log 1' },
-        { id: 'log-2', level: 'error', message: 'Test log 2' },
+      const mockLogs = [
+        { id: 'log-1', action: 'create', systemId: 'api', createdAt: new Date() },
+        { id: 'log-2', action: 'update', systemId: 'api', createdAt: new Date() },
       ];
 
-      mockPrismaService.devSystemLog.findMany.mockResolvedValue(logs);
-      mockPrismaService.devSystemLog.count.mockResolvedValue(2);
+      mockPrismaService.devAuditLog.findMany.mockResolvedValue(mockLogs);
+      mockPrismaService.devAuditLog.count.mockResolvedValue(2);
 
       const result = await service.getLogs({ page: 1, limit: 10 });
 
       expect(result.data).toHaveLength(2);
-      expect(result.total).toBe(2);
+      expect(result.meta.total).toBe(2);
     });
 
-    it('should filter by level', async () => {
-      const logs = [
-        { id: 'log-1', level: 'error', message: 'Error log' },
-      ];
+    it('should filter logs by source', async () => {
+      mockPrismaService.devAuditLog.findMany.mockResolvedValue([]);
+      mockPrismaService.devAuditLog.count.mockResolvedValue(0);
 
-      mockPrismaService.devSystemLog.findMany.mockResolvedValue(logs);
-      mockPrismaService.devSystemLog.count.mockResolvedValue(1);
+      await service.getLogs({ source: 'api', page: 1, limit: 10 });
 
-      const result = await service.getLogs({ page: 1, limit: 10, level: 'error' });
-
-      expect(result.data).toHaveLength(1);
-      expect(mockPrismaService.devSystemLog.findMany).toHaveBeenCalledWith(
+      expect(mockPrismaService.devAuditLog.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ level: 'error' }),
-        }),
-      );
-    });
-
-    it('should filter by source', async () => {
-      mockPrismaService.devSystemLog.findMany.mockResolvedValue([]);
-      mockPrismaService.devSystemLog.count.mockResolvedValue(0);
-
-      await service.getLogs({ page: 1, limit: 10, source: 'PaymentService' });
-
-      expect(mockPrismaService.devSystemLog.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ source: 'PaymentService' }),
+          where: expect.objectContaining({ systemId: 'api' }),
         }),
       );
     });
@@ -146,42 +134,29 @@ describe('MonitoringService', () => {
 
   describe('getAlerts', () => {
     it('should return paginated alerts', async () => {
-      const alerts = [
-        { id: 'alert-1', alertType: 'error', severity: 3, status: 'active' },
+      const mockAlerts = [
+        { id: 'alert-1', alertType: 'error', severity: 1, status: 'active' },
         { id: 'alert-2', alertType: 'warning', severity: 2, status: 'active' },
       ];
 
-      mockPrismaService.devAlert.findMany.mockResolvedValue(alerts);
+      mockPrismaService.devAlert.findMany.mockResolvedValue(mockAlerts);
       mockPrismaService.devAlert.count.mockResolvedValue(2);
 
       const result = await service.getAlerts({ page: 1, limit: 10 });
 
       expect(result.data).toHaveLength(2);
-      expect(result.total).toBe(2);
+      expect(result.meta.total).toBe(2);
     });
 
-    it('should filter by status', async () => {
-      const alerts = [
-        { id: 'alert-1', status: 'resolved' },
-      ];
-
-      mockPrismaService.devAlert.findMany.mockResolvedValue(alerts);
-      mockPrismaService.devAlert.count.mockResolvedValue(1);
-
-      const result = await service.getAlerts({ page: 1, limit: 10, status: 'resolved' });
-
-      expect(result.data).toHaveLength(1);
-    });
-
-    it('should filter by severity', async () => {
+    it('should filter alerts by status', async () => {
       mockPrismaService.devAlert.findMany.mockResolvedValue([]);
       mockPrismaService.devAlert.count.mockResolvedValue(0);
 
-      await service.getAlerts({ page: 1, limit: 10, severity: 5 });
+      await service.getAlerts({ status: 'active', page: 1, limit: 10 });
 
       expect(mockPrismaService.devAlert.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ severity: 5 }),
+          where: expect.objectContaining({ status: 'active' }),
         }),
       );
     });
@@ -191,101 +166,104 @@ describe('MonitoringService', () => {
     it('should create an alert', async () => {
       const alertData = {
         alertType: 'error',
-        source: 'PaymentService',
-        title: 'Payment Failed',
-        message: 'Payment processing failed for order 123',
-        severity: 4,
+        source: 'api',
+        title: 'Test Alert',
+        message: 'This is a test alert',
+        severity: 2,
       };
 
-      const createdAlert = {
+      const mockAlert = {
         id: 'alert-123',
         ...alertData,
         status: 'active',
         createdAt: new Date(),
       };
 
-      mockPrismaService.devAlert.create.mockResolvedValue(createdAlert);
+      mockPrismaService.devAlert.create.mockResolvedValue(mockAlert);
 
       const result = await service.createAlert(alertData);
 
       expect(result.id).toBe('alert-123');
       expect(result.alertType).toBe('error');
-      expect(result.status).toBe('active');
     });
   });
 
   describe('acknowledgeAlert', () => {
     it('should acknowledge an alert', async () => {
-      const alertId = 'alert-123';
-      const userId = 'user-456';
-
-      const updatedAlert = {
-        id: alertId,
-        status: 'acknowledged',
-        acknowledgedBy: userId,
-        acknowledgedAt: new Date(),
+      const mockAlert = {
+        id: 'alert-123',
+        status: 'active',
       };
 
-      mockPrismaService.devAlert.update.mockResolvedValue(updatedAlert);
+      mockPrismaService.devAlert.findUnique.mockResolvedValue(mockAlert);
+      mockPrismaService.devAlert.update.mockResolvedValue({
+        ...mockAlert,
+        status: 'acknowledged',
+        acknowledgedAt: new Date(),
+      });
 
-      const result = await service.acknowledgeAlert(alertId, userId);
+      const result = await service.acknowledgeAlert('alert-123', 'user-123');
 
       expect(result.status).toBe('acknowledged');
-      expect(result.acknowledgedBy).toBe(userId);
+    });
+
+    it('should throw error for non-existent alert', async () => {
+      mockPrismaService.devAlert.findUnique.mockResolvedValue(null);
+
+      await expect(service.acknowledgeAlert('non-existent', 'user-123')).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('resolveAlert', () => {
     it('should resolve an alert', async () => {
-      const alertId = 'alert-123';
-      const userId = 'user-456';
-      const resolution = 'Fixed the payment gateway configuration';
-
-      const updatedAlert = {
-        id: alertId,
-        status: 'resolved',
-        resolvedBy: userId,
-        resolution,
-        resolvedAt: new Date(),
+      const mockAlert = {
+        id: 'alert-123',
+        status: 'acknowledged',
       };
 
-      mockPrismaService.devAlert.update.mockResolvedValue(updatedAlert);
+      mockPrismaService.devAlert.findUnique.mockResolvedValue(mockAlert);
+      mockPrismaService.devAlert.update.mockResolvedValue({
+        ...mockAlert,
+        status: 'resolved',
+        resolvedAt: new Date(),
+        resolution: 'Fixed the issue',
+      });
 
-      const result = await service.resolveAlert(alertId, userId, resolution);
+      const result = await service.resolveAlert('alert-123', 'user-123', 'Fixed the issue');
 
       expect(result.status).toBe('resolved');
-      expect(result.resolution).toBe(resolution);
+    });
+
+    it('should throw error for non-existent alert', async () => {
+      mockPrismaService.devAlert.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.resolveAlert('non-existent', 'user-123', 'Resolution'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
-  describe('getMetricHistory', () => {
-    it('should return metric history', async () => {
-      const metrics = [
-        { timestamp: new Date(), value: 100 },
-        { timestamp: new Date(), value: 150 },
-        { timestamp: new Date(), value: 120 },
-      ];
+  describe('recordMetric', () => {
+    it('should record a system metric', async () => {
+      const metricData = {
+        metricName: 'cpu_usage',
+        metricType: 'gauge',
+        value: 45.5,
+        systemId: 'api',
+      };
 
-      mockPrismaService.devMetric.findMany.mockResolvedValue(metrics);
+      const mockMetric = {
+        id: 'metric-123',
+        ...metricData,
+        createdAt: new Date(),
+      };
 
-      const result = await service.getMetricHistory('cpu_usage', 24);
+      mockPrismaService.devSystemMetric.create.mockResolvedValue(mockMetric);
 
-      expect(result).toHaveLength(3);
-    });
+      const result = await service.recordMetric(metricData);
 
-    it('should filter by time range', async () => {
-      mockPrismaService.devMetric.findMany.mockResolvedValue([]);
-
-      await service.getMetricHistory('memory_usage', 12);
-
-      expect(mockPrismaService.devMetric.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            name: 'memory_usage',
-            timestamp: expect.any(Object),
-          }),
-        }),
-      );
+      expect(result.id).toBe('metric-123');
+      expect(result.metricName).toBe('cpu_usage');
     });
   });
 });

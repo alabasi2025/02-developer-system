@@ -12,6 +12,13 @@ export enum InternalSystem {
   REPORTS = 'reports',
   EMPLOYEES = 'employees',
   MOBILE = 'mobile',
+  // الأنظمة المضافة حديثاً
+  FIELD = 'field',           // العمليات الميدانية
+  MAINTENANCE = 'maintenance', // الصيانة
+  SCADA = 'scada',           // المراقبة والتحكم
+  INVENTORY = 'inventory',   // المخزون
+  HR = 'hr',                 // الموارد البشرية
+  FINANCE = 'finance',       // المالية
 }
 
 const SYSTEM_ENDPOINTS: Record<InternalSystem, string> = {
@@ -24,6 +31,13 @@ const SYSTEM_ENDPOINTS: Record<InternalSystem, string> = {
   [InternalSystem.REPORTS]: process.env.REPORTS_API_URL || 'http://localhost:3008/api/v1',
   [InternalSystem.EMPLOYEES]: process.env.EMPLOYEES_API_URL || 'http://localhost:3009/api/v1',
   [InternalSystem.MOBILE]: process.env.MOBILE_API_URL || 'http://localhost:3010/api/v1',
+  // الأنظمة المضافة حديثاً
+  [InternalSystem.FIELD]: process.env.FIELD_API_URL || 'http://localhost:3011/api/v1',
+  [InternalSystem.MAINTENANCE]: process.env.MAINTENANCE_API_URL || 'http://localhost:3012/api/v1',
+  [InternalSystem.SCADA]: process.env.SCADA_API_URL || 'http://localhost:3013/api/v1',
+  [InternalSystem.INVENTORY]: process.env.INVENTORY_API_URL || 'http://localhost:3014/api/v1',
+  [InternalSystem.HR]: process.env.HR_API_URL || 'http://localhost:3015/api/v1',
+  [InternalSystem.FINANCE]: process.env.FINANCE_API_URL || 'http://localhost:3016/api/v1',
 };
 
 interface ApiResponse<T = any> {
@@ -156,6 +170,13 @@ export class InternalApiService {
       [InternalSystem.REPORTS]: 'نظام التقارير',
       [InternalSystem.EMPLOYEES]: 'نظام الموظفين',
       [InternalSystem.MOBILE]: 'تطبيق الجوال',
+      // الأنظمة المضافة حديثاً
+      [InternalSystem.FIELD]: 'العمليات الميدانية',
+      [InternalSystem.MAINTENANCE]: 'نظام الصيانة',
+      [InternalSystem.SCADA]: 'المراقبة والتحكم',
+      [InternalSystem.INVENTORY]: 'نظام المخزون',
+      [InternalSystem.HR]: 'الموارد البشرية',
+      [InternalSystem.FINANCE]: 'النظام المالي',
     };
     return names[system] || system;
   }

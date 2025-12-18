@@ -67,6 +67,9 @@ export class ProxyResponseDto {
 
   @ApiProperty({ description: 'وقت الاستجابة بالميلي ثانية' })
   responseTime: number;
+
+  @ApiPropertyOptional({ description: 'هل الاستجابة من الكاش' })
+  fromCache?: boolean;
 }
 
 export class RateLimitConfigDto {
