@@ -1,0 +1,61 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build outputs
+dist
+build
+.next
+.nuxt
+
+# Development files
+.git
+.gitignore
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Test files
+coverage
+.nyc_output
+*.test.ts
+*.spec.ts
+__tests__
+
+# Documentation
+docs
+*.md
+!README.md
+
+# Misc
+.DS_Store
+Thumbs.db
+*.tmp
+*.temp
+
+# Docker
+Dockerfile*
+docker-compose*
+.docker
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+
+# Nx
+.nx
+nx.json
+project.json

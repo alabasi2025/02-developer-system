@@ -32,6 +32,7 @@ model DevIntegration {
   updatedBy     String?  @map("updated_by") @db.Uuid
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
 
   // Relations
   apiKeys       DevApiKey[]
@@ -63,6 +64,7 @@ model DevApiKey {
   revokedAt     DateTime? @map("revoked_at")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
 
   // Relations
   integration   DevIntegration? @relation(fields: [integrationId], references: [id])
@@ -167,6 +169,7 @@ model DevWebhook {
   createdBy     String?  @map("created_by") @db.Uuid
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
 
   // Relations
   integration   DevIntegration @relation(fields: [integrationId], references: [id])
@@ -306,6 +309,7 @@ model DevAiModel {
   createdBy     String?  @map("created_by") @db.Uuid
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
 
   // Relations
   predictions   DevAiPrediction[]
@@ -353,6 +357,7 @@ model DevPaymentGateway {
   fees          Json?    @db.JsonB // Fee structure
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
 
   // Relations
   transactions  DevPaymentTransaction[]
@@ -380,6 +385,7 @@ model DevPaymentTransaction {
   processedAt     DateTime? @map("processed_at")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
 
   // Relations
   gateway         DevPaymentGateway @relation(fields: [gatewayId], references: [id])
@@ -408,6 +414,7 @@ model DevMessageProvider {
   lastUsedAt    DateTime? @map("last_used_at")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
 
   // Relations
   messages      DevMessage[]
@@ -467,6 +474,7 @@ model DevIotDevice {
   lastSeenAt      DateTime? @map("last_seen_at")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
 
   // Relations
   readings        DevIotReading[]
@@ -974,4 +982,122 @@ model DevJobQueue {
   @@index([status])
   @@index([priority])
   @@index([scheduledFor])
+}
+
+
+// جدول Dead Letter Queue - للأحداث والـ Webhooks الفاشلة
+model DevDeadLetterQueue {
+  id            String   @id @default(uuid()) @db.Uuid
+  type          String   @db.VarChar(50) // webhook, event, job
+  originalId    String   @map("original_id") @db.VarChar(100)
+  originalData  Json?    @map("original_data") @db.JsonB
+  reason        String   @db.Text
+  attemptCount  Int      @default(0) @map("attempt_count")
+  lastError     String?  @map("last_error") @db.Text
+  status        String   @default("pending") @db.VarChar(20) // pending, reprocessed, discarded
+  reprocessedAt DateTime? @map("reprocessed_at")
+  discardedAt   DateTime? @map("discarded_at")
+  discardedBy   String?  @map("discarded_by") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("dev_dead_letter_queue")
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// جدول سجلات التدقيق - Audit Trail للعمليات الحساسة
+model DevAuditLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  action        String   @db.VarChar(50) // create, update, delete, login, logout, etc.
+  entityType    String   @map("entity_type") @db.VarChar(100)
+  entityId      String?  @map("entity_id") @db.Uuid
+  userId        String?  @map("user_id") @db.Uuid
+  userEmail     String?  @map("user_email") @db.VarChar(255)
+  userName      String?  @map("user_name") @db.VarChar(255)
+  oldValue      Json?    @map("old_value") @db.JsonB
+  newValue      Json?    @map("new_value") @db.JsonB
+  changes       Json?    @db.JsonB // Diff between old and new
+  ipAddress     String?  @map("ip_address") @db.VarChar(45)
+  userAgent     String?  @map("user_agent") @db.VarChar(500)
+  requestId     String?  @map("request_id") @db.VarChar(100)
+  systemId      String?  @map("system_id") @db.VarChar(50)
+  metadata      Json?    @db.JsonB
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("dev_audit_logs")
+  @@index([action])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// جدول سجلات الوصول - Access Logs
+model DevAccessLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  method        String   @db.VarChar(10)
+  path          String   @db.VarChar(500)
+  statusCode    Int      @map("status_code")
+  responseTime  Int      @map("response_time") // milliseconds
+  requestSize   Int?     @map("request_size") // bytes
+  responseSize  Int?     @map("response_size") // bytes
+  userId        String?  @map("user_id") @db.Uuid
+  apiKeyId      String?  @map("api_key_id") @db.Uuid
+  ipAddress     String?  @map("ip_address") @db.VarChar(45)
+  userAgent     String?  @map("user_agent") @db.VarChar(500)
+  referer       String?  @db.VarChar(500)
+  requestId     String?  @map("request_id") @db.VarChar(100)
+  errorMessage  String?  @map("error_message") @db.Text
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("dev_access_logs")
+  @@index([method])
+  @@index([path])
+  @@index([statusCode])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// جدول سجلات الأخطاء - Error Logs
+model DevErrorLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  level         String   @db.VarChar(20) // error, fatal, critical
+  source        String   @db.VarChar(100)
+  message       String   @db.Text
+  stack         String?  @db.Text
+  context       Json?    @db.JsonB
+  requestId     String?  @map("request_id") @db.VarChar(100)
+  userId        String?  @map("user_id") @db.Uuid
+  ipAddress     String?  @map("ip_address") @db.VarChar(45)
+  resolved      Boolean  @default(false)
+  resolvedAt    DateTime? @map("resolved_at")
+  resolvedBy    String?  @map("resolved_by") @db.Uuid
+  resolution    String?  @db.Text
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("dev_error_logs")
+  @@index([level])
+  @@index([source])
+  @@index([resolved])
+  @@index([createdAt])
+}
+
+// جدول سجلات الأداء - Performance Logs
+model DevPerformanceLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  metricName    String   @map("metric_name") @db.VarChar(100)
+  metricType    String   @map("metric_type") @db.VarChar(50) // counter, gauge, histogram, summary
+  value         Float
+  unit          String?  @db.VarChar(20) // ms, bytes, percent, count
+  tags          Json?    @db.JsonB // Additional dimensions
+  source        String?  @db.VarChar(100)
+  timestamp     DateTime @default(now())
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("dev_performance_logs")
+  @@index([metricName])
+  @@index([metricType])
+  @@index([timestamp])
 }

@@ -17,12 +17,16 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { MonitoringService } from './monitoring.service';
+import { Public } from '../auth/decorators/public.decorator';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { Permission } from '../auth/decorators/permissions.decorator';
 
 @ApiTags('المراقبة - Monitoring')
 @Controller('monitoring')
 export class MonitoringController {
   constructor(private readonly monitoringService: MonitoringService) {}
 
+  @Public()
   @Get('health')
   @ApiOperation({ summary: 'فحص صحة النظام', description: 'فحص صحة النظام وخدماته' })
   @ApiResponse({ status: 200, description: 'حالة صحة النظام' })
@@ -32,6 +36,7 @@ export class MonitoringController {
 
   @Get('metrics')
   @ApiBearerAuth()
+  @Permissions(Permission.MONITORING_READ)
   @ApiOperation({ summary: 'مقاييس النظام', description: 'جلب مقاييس أداء النظام' })
   @ApiResponse({ status: 200, description: 'مقاييس النظام' })
   async getMetrics() {
@@ -40,6 +45,7 @@ export class MonitoringController {
 
   @Get('logs')
   @ApiBearerAuth()
+  @Permissions(Permission.MONITORING_READ)
   @ApiOperation({ summary: 'سجلات النظام', description: 'جلب سجلات النظام' })
   @ApiQuery({ name: 'level', required: false, description: 'مستوى السجل' })
   @ApiQuery({ name: 'source', required: false, description: 'مصدر السجل' })
@@ -68,6 +74,7 @@ export class MonitoringController {
 
   @Get('alerts')
   @ApiBearerAuth()
+  @Permissions(Permission.MONITORING_READ)
   @ApiOperation({ summary: 'التنبيهات', description: 'جلب تنبيهات النظام' })
   @ApiQuery({ name: 'status', required: false, description: 'حالة التنبيه' })
   @ApiQuery({ name: 'severity', required: false, description: 'شدة التنبيه' })
@@ -91,6 +98,7 @@ export class MonitoringController {
 
   @Post('alerts')
   @ApiBearerAuth()
+  @Permissions(Permission.MONITORING_WRITE)
   @ApiOperation({ summary: 'إنشاء تنبيه', description: 'إنشاء تنبيه جديد' })
   @ApiResponse({ status: 201, description: 'تم إنشاء التنبيه' })
   async createAlert(
@@ -108,6 +116,7 @@ export class MonitoringController {
 
   @Put('alerts/:id/acknowledge')
   @ApiBearerAuth()
+  @Permissions(Permission.MONITORING_WRITE)
   @ApiOperation({ summary: 'تأكيد استلام تنبيه', description: 'تأكيد استلام تنبيه' })
   @ApiParam({ name: 'id', description: 'معرف التنبيه' })
   @ApiResponse({ status: 200, description: 'تم تأكيد الاستلام' })
@@ -120,6 +129,7 @@ export class MonitoringController {
 
   @Put('alerts/:id/resolve')
   @ApiBearerAuth()
+  @Permissions(Permission.MONITORING_WRITE)
   @ApiOperation({ summary: 'حل تنبيه', description: 'تحديد تنبيه كمحلول' })
   @ApiParam({ name: 'id', description: 'معرف التنبيه' })
   @ApiResponse({ status: 200, description: 'تم حل التنبيه' })
@@ -132,6 +142,7 @@ export class MonitoringController {
 
   @Get('metrics/:name/history')
   @ApiBearerAuth()
+  @Permissions(Permission.MONITORING_READ)
   @ApiOperation({ summary: 'تاريخ مقياس', description: 'جلب تاريخ مقياس محدد' })
   @ApiParam({ name: 'name', description: 'اسم المقياس' })
   @ApiQuery({ name: 'hours', required: false, description: 'عدد الساعات' })

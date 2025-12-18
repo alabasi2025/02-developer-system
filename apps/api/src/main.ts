@@ -7,10 +7,54 @@ import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app/app.module';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+
+// Custom JSON Logger
+class JsonLogger extends Logger {
+  private formatMessage(level: string, message: any, context?: string): string {
+    return JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level,
+      context: context || this.context,
+      message: typeof message === 'string' ? message : JSON.stringify(message),
+    });
+  }
+
+  log(message: any, context?: string) {
+    console.log(this.formatMessage('info', message, context));
+  }
+
+  error(message: any, trace?: string, context?: string) {
+    console.error(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level: 'error',
+      context: context || this.context,
+      message: typeof message === 'string' ? message : JSON.stringify(message),
+      trace,
+    }));
+  }
+
+  warn(message: any, context?: string) {
+    console.warn(this.formatMessage('warn', message, context));
+  }
+
+  debug(message: any, context?: string) {
+    console.debug(this.formatMessage('debug', message, context));
+  }
+
+  verbose(message: any, context?: string) {
+    console.log(this.formatMessage('verbose', message, context));
+  }
+}
 
 async function bootstrap() {
+  // Use JSON logger in production
+  const isProduction = process.env.NODE_ENV === 'production';
+  
   const app = await NestFactory.create(AppModule, {
-    logger: ['error', 'warn', 'log', 'debug', 'verbose'],
+    logger: isProduction 
+      ? new JsonLogger('Bootstrap')
+      : ['error', 'warn', 'log', 'debug', 'verbose'],
   });
 
   // Global prefix
@@ -35,6 +79,9 @@ async function bootstrap() {
       },
     }),
   );
+
+  // Global interceptors
+  app.useGlobalInterceptors(new LoggingInterceptor());
 
   // Swagger documentation
   const config = new DocumentBuilder()
@@ -92,14 +139,30 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   await app.listen(port);
 
-  Logger.log(
-    `🚀 نظام المطور يعمل على: http://localhost:${port}/${globalPrefix}`,
-    'Bootstrap',
-  );
-  Logger.log(
-    `📚 وثائق API متاحة على: http://localhost:${port}/docs`,
-    'Bootstrap',
-  );
+  // Log startup in JSON format for production
+  if (isProduction) {
+    console.log(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level: 'info',
+      context: 'Bootstrap',
+      message: `Developer System started on port ${port}`,
+      data: {
+        port,
+        prefix: globalPrefix,
+        docsUrl: `/docs`,
+        environment: process.env.NODE_ENV,
+      },
+    }));
+  } else {
+    Logger.log(
+      `🚀 نظام المطور يعمل على: http://localhost:${port}/${globalPrefix}`,
+      'Bootstrap',
+    );
+    Logger.log(
+      `📚 وثائق API متاحة على: http://localhost:${port}/docs`,
+      'Bootstrap',
+    );
+  }
 }
 
 bootstrap();
