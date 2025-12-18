@@ -19,6 +19,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { IotService, RegisterDeviceDto, DeviceDataDto, DeviceCommandDto } from './iot.service';
 
 @ApiTags('إنترنت الأشياء - IoT')
@@ -37,6 +38,7 @@ export class IotController {
   }
 
   @Get('devices')
+  @Public()
   @ApiOperation({ summary: 'جلب الأجهزة', description: 'جلب قائمة أجهزة IoT' })
   @ApiResponse({ status: 200, description: 'قائمة الأجهزة' })
   async findAllDevices(
@@ -58,6 +60,7 @@ export class IotController {
   }
 
   @Get('devices/:id')
+  @Public()
   @ApiOperation({ summary: 'جلب جهاز', description: 'جلب تفاصيل جهاز IoT' })
   @ApiParam({ name: 'id', description: 'معرف الجهاز' })
   @ApiResponse({ status: 200, description: 'تفاصيل الجهاز' })
@@ -102,6 +105,7 @@ export class IotController {
   }
 
   @Get('devices/:deviceId/data')
+  @Public()
   @ApiOperation({ summary: 'جلب بيانات جهاز', description: 'جلب بيانات جهاز IoT' })
   @ApiParam({ name: 'deviceId', description: 'معرف الجهاز' })
   @ApiResponse({ status: 200, description: 'بيانات الجهاز' })
@@ -123,6 +127,7 @@ export class IotController {
   }
 
   @Get('devices/:deviceId/data/latest')
+  @Public()
   @ApiOperation({ summary: 'آخر بيانات جهاز', description: 'جلب آخر بيانات جهاز IoT' })
   @ApiParam({ name: 'deviceId', description: 'معرف الجهاز' })
   @ApiResponse({ status: 200, description: 'آخر البيانات' })
@@ -144,6 +149,7 @@ export class IotController {
   }
 
   @Get('devices/:deviceId/commands')
+  @Public()
   @ApiOperation({ summary: 'جلب أوامر جهاز', description: 'جلب أوامر جهاز IoT' })
   @ApiParam({ name: 'deviceId', description: 'معرف الجهاز' })
   @ApiResponse({ status: 200, description: 'قائمة الأوامر' })
@@ -191,6 +197,7 @@ export class IotController {
   }
 
   @Get('alert-rules')
+  @Public()
   @ApiOperation({ summary: 'جلب قواعد التنبيه', description: 'جلب قواعد تنبيه IoT' })
   @ApiResponse({ status: 200, description: 'قائمة القواعد' })
   async findAllAlertRules(
@@ -204,6 +211,7 @@ export class IotController {
   }
 
   @Get('devices/:deviceId/alerts')
+  @Public()
   @ApiOperation({ summary: 'جلب تنبيهات جهاز', description: 'جلب تنبيهات جهاز IoT' })
   @ApiParam({ name: 'deviceId', description: 'معرف الجهاز' })
   @ApiResponse({ status: 200, description: 'قائمة التنبيهات' })

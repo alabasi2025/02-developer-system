@@ -19,6 +19,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { ApiKeysService } from './api-keys.service';
 import {
   CreateApiKeyDto,
@@ -46,6 +47,7 @@ export class ApiKeysController {
   }
 
   @Get()
+  @Public()
   @ApiOperation({ summary: 'جلب جميع مفاتيح API', description: 'جلب قائمة بجميع مفاتيح API مع إمكانية الفلترة' })
   @ApiResponse({ status: 200, description: 'قائمة مفاتيح API' })
   async findAll(@Query() query: ApiKeyQueryDto) {
@@ -53,6 +55,7 @@ export class ApiKeysController {
   }
 
   @Get(':id')
+  @Public()
   @ApiOperation({ summary: 'جلب مفتاح API محدد', description: 'جلب تفاصيل مفتاح API محدد' })
   @ApiParam({ name: 'id', description: 'معرف المفتاح', type: 'string' })
   @ApiResponse({ status: 200, description: 'تفاصيل المفتاح', type: ApiKeyResponseDto })

@@ -12,6 +12,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { AiService, AnalyzeDataDto, PredictDto, ChatDto, ExtractDataDto } from './ai.service';
 
 @ApiTags('الذكاء الاصطناعي - AI')
@@ -63,6 +64,7 @@ export class AiController {
   }
 
   @Get('usage')
+  @Public()
   @ApiOperation({ summary: 'إحصائيات الاستخدام', description: 'جلب إحصائيات استخدام الذكاء الاصطناعي' })
   @ApiResponse({ status: 200, description: 'إحصائيات الاستخدام' })
   async getUsageStats(

@@ -73,6 +73,7 @@ export class MonitoringController {
   }
 
   @Get('alerts')
+  @Public()
   @ApiBearerAuth()
   @Permissions(Permission.MONITORING_READ)
   @ApiOperation({ summary: 'التنبيهات', description: 'جلب تنبيهات النظام' })
@@ -141,6 +142,7 @@ export class MonitoringController {
   }
 
   @Get('systems')
+  @Public()
   @ApiBearerAuth()
   @Permissions(Permission.MONITORING_READ)
   @ApiOperation({ summary: 'حالة الأنظمة', description: 'جلب حالة جميع الأنظمة المتكاملة' })

@@ -20,6 +20,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { PaymentsService, PaymentGatewayConfig, ProcessPaymentDto, RefundPaymentDto } from './payments.service';
 
 @ApiTags('المدفوعات - Payments')
@@ -38,6 +39,7 @@ export class PaymentsController {
   }
 
   @Get('gateways')
+  @Public()
   @ApiOperation({ summary: 'جلب بوابات الدفع', description: 'جلب قائمة بوابات الدفع' })
   @ApiResponse({ status: 200, description: 'قائمة البوابات' })
   async findAllGateways(
@@ -51,6 +53,7 @@ export class PaymentsController {
   }
 
   @Get('gateways/:id')
+  @Public()
   @ApiOperation({ summary: 'جلب بوابة دفع', description: 'جلب تفاصيل بوابة دفع محددة' })
   @ApiParam({ name: 'id', description: 'معرف البوابة' })
   @ApiResponse({ status: 200, description: 'تفاصيل البوابة' })
@@ -97,6 +100,7 @@ export class PaymentsController {
   // ==================== Transaction Queries ====================
 
   @Get('transactions')
+  @Public()
   @ApiOperation({ summary: 'جلب المعاملات', description: 'جلب قائمة المعاملات المالية' })
   @ApiResponse({ status: 200, description: 'قائمة المعاملات' })
   async findAllTransactions(
@@ -120,6 +124,7 @@ export class PaymentsController {
   }
 
   @Get('transactions/:id')
+  @Public()
   @ApiOperation({ summary: 'جلب معاملة', description: 'جلب تفاصيل معاملة محددة' })
   @ApiParam({ name: 'id', description: 'معرف المعاملة' })
   @ApiResponse({ status: 200, description: 'تفاصيل المعاملة' })

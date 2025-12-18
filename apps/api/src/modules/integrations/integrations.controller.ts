@@ -19,6 +19,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { IntegrationsService } from './integrations.service';
 import {
   CreateIntegrationDto,
@@ -44,6 +45,7 @@ export class IntegrationsController {
   }
 
   @Get()
+  @Public()
   @RequirePermissions('integrations:read')
   @ApiOperation({ summary: 'جلب جميع التكاملات', description: 'جلب قائمة بجميع التكاملات مع إمكانية الفلترة والتصفح' })
   @ApiResponse({ status: 200, description: 'قائمة التكاملات' })
@@ -52,6 +54,7 @@ export class IntegrationsController {
   }
 
   @Get(':id')
+  @Public()
   @RequirePermissions('integrations:read')
   @ApiOperation({ summary: 'جلب تكامل محدد', description: 'جلب تفاصيل تكامل محدد بواسطة المعرف' })
   @ApiParam({ name: 'id', description: 'معرف التكامل', type: 'string' })

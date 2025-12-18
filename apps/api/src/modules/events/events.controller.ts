@@ -19,6 +19,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { EventsService } from './events.service';
 import {
   PublishEventDto,
@@ -48,6 +49,7 @@ export class EventsController {
   }
 
   @Get()
+  @Public()
   @RequirePermissions('events:read')
   @ApiOperation({ summary: 'جلب جميع الأحداث', description: 'جلب قائمة بجميع الأحداث مع إمكانية الفلترة' })
   @ApiResponse({ status: 200, description: 'قائمة الأحداث' })
@@ -67,6 +69,7 @@ export class EventsController {
   }
 
   @Get('subscriptions')
+  @Public()
   @RequirePermissions('events:read')
   @ApiOperation({ summary: 'جلب جميع الاشتراكات', description: 'جلب قائمة بجميع اشتراكات الأحداث' })
   @ApiResponse({ status: 200, description: 'قائمة الاشتراكات' })
@@ -85,6 +88,7 @@ export class EventsController {
   // ==================== Dynamic routes (with :id parameter) ====================
 
   @Get('subscriptions/:id')
+  @Public()
   @RequirePermissions('events:read')
   @ApiOperation({ summary: 'جلب اشتراك محدد', description: 'جلب تفاصيل اشتراك محدد' })
   @ApiParam({ name: 'id', description: 'معرف الاشتراك', type: 'string' })
@@ -119,6 +123,7 @@ export class EventsController {
   }
 
   @Get(':id')
+  @Public()
   @RequirePermissions('events:read')
   @ApiOperation({ summary: 'جلب حدث محدد', description: 'جلب تفاصيل حدث محدد مع حالة التسليم' })
   @ApiParam({ name: 'id', description: 'معرف الحدث', type: 'string' })

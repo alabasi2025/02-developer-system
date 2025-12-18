@@ -19,6 +19,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { MessagesService, MessageProviderConfig, SendMessageDto, BulkMessageDto } from './messages.service';
 
 @ApiTags('الرسائل - Messages')
@@ -37,6 +38,7 @@ export class MessagesController {
   }
 
   @Get('providers')
+  @Public()
   @ApiOperation({ summary: 'جلب مزودي الرسائل', description: 'جلب قائمة مزودي الرسائل' })
   @ApiResponse({ status: 200, description: 'قائمة المزودين' })
   async findAllProviders(
@@ -50,6 +52,7 @@ export class MessagesController {
   }
 
   @Get('providers/:id')
+  @Public()
   @ApiOperation({ summary: 'جلب مزود رسائل', description: 'جلب تفاصيل مزود رسائل' })
   @ApiParam({ name: 'id', description: 'معرف المزود' })
   @ApiResponse({ status: 200, description: 'تفاصيل المزود' })
@@ -109,6 +112,7 @@ export class MessagesController {
   }
 
   @Get('templates')
+  @Public()
   @ApiOperation({ summary: 'جلب قوالب الرسائل', description: 'جلب قائمة قوالب الرسائل' })
   @ApiResponse({ status: 200, description: 'قائمة القوالب' })
   async findAllTemplates(@Query('type') type?: string) {
@@ -135,6 +139,7 @@ export class MessagesController {
   // ==================== Message Queries ====================
 
   @Get()
+  @Public()
   @ApiOperation({ summary: 'جلب الرسائل', description: 'جلب قائمة الرسائل المرسلة' })
   @ApiResponse({ status: 200, description: 'قائمة الرسائل' })
   async findAllMessages(
@@ -158,6 +163,7 @@ export class MessagesController {
   }
 
   @Get(':id')
+  @Public()
   @ApiOperation({ summary: 'جلب رسالة', description: 'جلب تفاصيل رسالة محددة' })
   @ApiParam({ name: 'id', description: 'معرف الرسالة' })
   @ApiResponse({ status: 200, description: 'تفاصيل الرسالة' })
