@@ -152,7 +152,7 @@ export class RetryManagerService implements OnModuleInit, OnModuleDestroy {
         where: { id: eventId },
         data: {
           status: 'failed',
-          error: error.message,
+          errorMessage: error.message,
         },
       });
       throw error;

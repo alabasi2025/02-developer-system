@@ -18,6 +18,7 @@ import {
   ApiParam,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { EventsService } from './events.service';
 import {
   PublishEventDto,
@@ -38,6 +39,7 @@ export class EventsController {
   // ==================== Event Endpoints ====================
 
   @Post('publish')
+  @RequirePermissions('events:publish')
   @ApiOperation({ summary: 'نشر حدث جديد', description: 'نشر حدث جديد ليتم توزيعه على المشتركين' })
   @ApiResponse({ status: 201, description: 'تم نشر الحدث بنجاح' })
   @ApiResponse({ status: 400, description: 'بيانات غير صالحة' })
@@ -46,6 +48,7 @@ export class EventsController {
   }
 
   @Get()
+  @RequirePermissions('events:read')
   @ApiOperation({ summary: 'جلب جميع الأحداث', description: 'جلب قائمة بجميع الأحداث مع إمكانية الفلترة' })
   @ApiResponse({ status: 200, description: 'قائمة الأحداث' })
   async findAll(@Query() query: EventQueryDto) {
@@ -55,6 +58,7 @@ export class EventsController {
   // ==================== Subscription Endpoints (Static routes first) ====================
 
   @Post('subscribe')
+  @RequirePermissions('events:subscribe')
   @ApiOperation({ summary: 'إنشاء اشتراك جديد', description: 'الاشتراك في نوع معين من الأحداث' })
   @ApiResponse({ status: 201, description: 'تم إنشاء الاشتراك بنجاح', type: SubscriptionResponseDto })
   @ApiResponse({ status: 400, description: 'بيانات غير صالحة أو اشتراك موجود' })
@@ -63,6 +67,7 @@ export class EventsController {
   }
 
   @Get('subscriptions')
+  @RequirePermissions('events:read')
   @ApiOperation({ summary: 'جلب جميع الاشتراكات', description: 'جلب قائمة بجميع اشتراكات الأحداث' })
   @ApiResponse({ status: 200, description: 'قائمة الاشتراكات' })
   async findAllSubscriptions(@Query() query: SubscriptionQueryDto) {
@@ -70,6 +75,7 @@ export class EventsController {
   }
 
   @Post('retry-failed')
+  @RequirePermissions('events:execute')
   @ApiOperation({ summary: 'إعادة محاولة التسليمات الفاشلة', description: 'إعادة محاولة تسليم الأحداث الفاشلة' })
   @ApiResponse({ status: 200, description: 'تم إعادة المحاولة' })
   async retryFailed() {
@@ -79,6 +85,7 @@ export class EventsController {
   // ==================== Dynamic routes (with :id parameter) ====================
 
   @Get('subscriptions/:id')
+  @RequirePermissions('events:read')
   @ApiOperation({ summary: 'جلب اشتراك محدد', description: 'جلب تفاصيل اشتراك محدد' })
   @ApiParam({ name: 'id', description: 'معرف الاشتراك', type: 'string' })
   @ApiResponse({ status: 200, description: 'تفاصيل الاشتراك', type: SubscriptionResponseDto })
@@ -88,6 +95,7 @@ export class EventsController {
   }
 
   @Put('subscriptions/:id')
+  @RequirePermissions('events:update')
   @ApiOperation({ summary: 'تحديث اشتراك', description: 'تحديث بيانات اشتراك موجود' })
   @ApiParam({ name: 'id', description: 'معرف الاشتراك', type: 'string' })
   @ApiResponse({ status: 200, description: 'تم تحديث الاشتراك بنجاح', type: SubscriptionResponseDto })
@@ -100,6 +108,7 @@ export class EventsController {
   }
 
   @Delete('unsubscribe/:id')
+  @RequirePermissions('events:delete')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'إلغاء اشتراك', description: 'إلغاء اشتراك في الأحداث' })
   @ApiParam({ name: 'id', description: 'معرف الاشتراك', type: 'string' })
@@ -110,6 +119,7 @@ export class EventsController {
   }
 
   @Get(':id')
+  @RequirePermissions('events:read')
   @ApiOperation({ summary: 'جلب حدث محدد', description: 'جلب تفاصيل حدث محدد مع حالة التسليم' })
   @ApiParam({ name: 'id', description: 'معرف الحدث', type: 'string' })
   @ApiResponse({ status: 200, description: 'تفاصيل الحدث', type: EventResponseDto })

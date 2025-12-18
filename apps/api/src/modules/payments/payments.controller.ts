@@ -19,6 +19,7 @@ import {
   ApiParam,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { PaymentsService, PaymentGatewayConfig, ProcessPaymentDto, RefundPaymentDto } from './payments.service';
 
 @ApiTags('المدفوعات - Payments')

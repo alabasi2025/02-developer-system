@@ -14,14 +14,11 @@ interface AuditLogEntry {
   entityType: string;
   entityId?: string;
   userId?: string;
-  userEmail?: string;
   userName?: string;
-  oldValue?: any;
-  newValue?: any;
-  changes?: any;
+  oldValues?: any;
+  newValues?: any;
   ipAddress?: string;
   userAgent?: string;
-  requestId?: string;
   systemId?: string;
   metadata?: any;
 }
@@ -51,12 +48,10 @@ export class AuditInterceptor implements NestInterceptor {
             entityType,
             entityId: this.extractEntityId(request, response),
             userId: (request as any).user?.id,
-            userEmail: (request as any).user?.email,
-            userName: (request as any).user?.name,
-            newValue: this.sanitizeData(request.body),
+            userName: (request as any).user?.name || (request as any).user?.email,
+            newValues: this.sanitizeData(request.body),
             ipAddress: this.getClientIp(request),
             userAgent: request.headers['user-agent'],
-            requestId: (request as any).requestId,
             systemId: (request as any).user?.systemId,
             metadata: {
               path: request.url,
@@ -84,14 +79,11 @@ export class AuditInterceptor implements NestInterceptor {
         entityType: entry.entityType,
         entityId: entry.entityId,
         userId: entry.userId,
-        userEmail: entry.userEmail,
         userName: entry.userName,
-        oldValue: entry.oldValue as any,
-        newValue: entry.newValue as any,
-        changes: entry.changes as any,
+        oldValues: entry.oldValues as any,
+        newValues: entry.newValues as any,
         ipAddress: entry.ipAddress,
         userAgent: entry.userAgent,
-        requestId: entry.requestId,
         systemId: entry.systemId,
         metadata: entry.metadata as any,
       },

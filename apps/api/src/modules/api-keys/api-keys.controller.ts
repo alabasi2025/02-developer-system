@@ -18,6 +18,7 @@ import {
   ApiParam,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { ApiKeysService } from './api-keys.service';
 import {
   CreateApiKeyDto,

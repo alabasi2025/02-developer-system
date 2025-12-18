@@ -408,14 +408,10 @@ export class AiComponent {
         this.updatePredictionChart(result);
         this.predicting.set(false);
       },
-      error: () => {
-        // Mock result for demo
-        const mockResult = {
-          predictions: [165, 175, 180, 190],
-          confidence: 85,
-        };
-        this.predictionResult.set(mockResult);
-        this.updatePredictionChart(mockResult);
+      error: (error) => {
+        // Show error message to user
+        console.error('Prediction error:', error);
+        this.predictionResult.set({ predictions: [], confidence: 0, error: 'حدث خطأ في التنبؤ. يرجى المحاولة مرة أخرى.' });
         this.predicting.set(false);
       }
     });
@@ -469,11 +465,11 @@ export class AiComponent {
         this.chatMessages.set([...msgs]);
         this.chatLoading.set(false);
       },
-      error: () => {
-        // Mock response for demo
-        const mockResponse = this.getMockResponse(userMessage);
+      error: (error) => {
+        // Show error message to user
+        console.error('Chat error:', error);
         const msgs = this.chatMessages();
-        msgs.push({ id: msgs.length + 1, role: 'assistant', content: mockResponse });
+        msgs.push({ id: msgs.length + 1, role: 'assistant', content: 'عذراً، حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.' });
         this.chatMessages.set([...msgs]);
         this.chatLoading.set(false);
       }

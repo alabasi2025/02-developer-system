@@ -11,6 +11,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { AiService, AnalyzeDataDto, PredictDto, ChatDto, ExtractDataDto } from './ai.service';
 
 @ApiTags('الذكاء الاصطناعي - AI')

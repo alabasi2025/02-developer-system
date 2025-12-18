@@ -336,13 +336,16 @@ export class DashboardComponent implements OnInit {
       }
     });
 
-    // Set mock systems status
-    this.systemsStatus.set([
-      { systemId: 'core', name: 'النظام الأم', status: 'healthy', responseTime: 45 },
-      { systemId: 'assets', name: 'نظام الأصول', status: 'healthy', responseTime: 62 },
-      { systemId: 'billing', name: 'نظام الفوترة', status: 'degraded', responseTime: 250 },
-      { systemId: 'inventory', name: 'نظام المخزون', status: 'unhealthy', responseTime: null },
-    ]);
+    // Fetch systems status from API
+    this.monitoringService.getSystemsStatus().subscribe({
+      next: (systems) => {
+        this.systemsStatus.set(systems);
+      },
+      error: () => {
+        // Set empty array on error
+        this.systemsStatus.set([]);
+      }
+    });
   }
 
   getHealthColor(status?: string): string {

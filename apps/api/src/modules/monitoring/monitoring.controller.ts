@@ -140,6 +140,15 @@ export class MonitoringController {
     return this.monitoringService.resolveAlert(id, data.userId, data.resolution);
   }
 
+  @Get('systems')
+  @ApiBearerAuth()
+  @Permissions(Permission.MONITORING_READ)
+  @ApiOperation({ summary: 'حالة الأنظمة', description: 'جلب حالة جميع الأنظمة المتكاملة' })
+  @ApiResponse({ status: 200, description: 'قائمة حالات الأنظمة' })
+  async getSystemsStatus() {
+    return this.monitoringService.getSystemsStatus();
+  }
+
   @Get('metrics/:name/history')
   @ApiBearerAuth()
   @Permissions(Permission.MONITORING_READ)

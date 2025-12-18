@@ -41,7 +41,7 @@ export class WebhookDispatcherService {
       for (const webhook of webhooks) {
         await this.sendWebhook(webhook, event);
       }
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Failed to dispatch webhooks for event ${event.id}`, error.stack);
     }
   }
@@ -95,19 +95,53 @@ export class WebhookDispatcherService {
       delivery.attemptCount = 1;
 
       await this.updateDelivery(delivery);
+
+      // تسجيل في سجل Webhooks
+      await this.logWebhookDelivery(webhook.id, event.eventType, payload, response.status, response.body, 'success');
+
       this.logger.log(`Webhook delivered: ${webhook.url} for event ${event.eventType}`);
-    } catch (error) {
+    } catch (error: any) {
       delivery.status = 'failed';
       delivery.error = error.message;
       delivery.attemptCount = 1;
       delivery.nextRetryAt = this.calculateNextRetry(1);
 
       await this.updateDelivery(delivery);
+
+      // تسجيل الفشل
+      await this.logWebhookDelivery(webhook.id, event.eventType, payload, null, null, 'failed', error.message);
+
       this.logger.warn(`Webhook delivery failed: ${webhook.url} - ${error.message}`);
 
       // جدولة إعادة المحاولة
       await this.scheduleRetry(delivery);
     }
+  }
+
+  /**
+   * تسجيل تسليم Webhook
+   */
+  private async logWebhookDelivery(
+    webhookId: string,
+    eventType: string,
+    payload: any,
+    responseCode: number | null,
+    responseBody: string | null,
+    status: string,
+    errorMessage?: string,
+  ): Promise<void> {
+    await this.prisma.devWebhookLog.create({
+      data: {
+        webhookId,
+        eventType,
+        payload,
+        responseCode,
+        responseBody,
+        status,
+        errorMessage,
+        attempts: 1,
+      },
+    });
   }
 
   /**
@@ -127,20 +161,29 @@ export class WebhookDispatcherService {
       ...customHeaders,
     };
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(30000), // 30 seconds timeout
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-    const body = await response.text();
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${body}`);
+      clearTimeout(timeoutId);
+      const body = await response.text();
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${body}`);
+      }
+
+      return { status: response.status, body };
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      throw error;
     }
-
-    return { status: response.status, body };
   }
 
   /**
@@ -150,13 +193,11 @@ export class WebhookDispatcherService {
     return {
       id: event.id,
       type: event.eventType,
-      source: event.source,
-      timestamp: event.timestamp?.toISOString(),
+      source: event.sourceSystem,
+      timestamp: event.processedAt?.toISOString(),
       data: event.payload,
       metadata: {
-        correlationId: event.correlationId,
         webhookId: webhook.id,
-        deliveryId: this.generateDeliveryId(),
       },
     };
   }
@@ -192,7 +233,6 @@ export class WebhookDispatcherService {
       return;
     }
 
-    // في بيئة الإنتاج، يمكن استخدام Bull Queue أو Redis للجدولة
     this.logger.debug(`Retry scheduled for ${delivery.id} at ${delivery.nextRetryAt}`);
   }
 
@@ -214,7 +254,7 @@ export class WebhookDispatcherService {
       return;
     }
 
-    const signature = this.generateSignature(delivery.payload, delivery.webhook.secret);
+    const signature = this.generateSignature(delivery.payload, delivery.webhook.secret || '');
 
     try {
       const response = await this.sendRequest(
@@ -236,7 +276,7 @@ export class WebhookDispatcherService {
       });
 
       this.logger.log(`Webhook retry successful: ${deliveryId}`);
-    } catch (error) {
+    } catch (error: any) {
       const newAttemptCount = delivery.attemptCount + 1;
       
       await this.prisma.devWebhookDelivery.update({
@@ -250,6 +290,18 @@ export class WebhookDispatcherService {
 
       this.logger.warn(`Webhook retry failed: ${deliveryId} - attempt ${newAttemptCount}`);
     }
+  }
+
+  /**
+   * الحصول على التسليمات الفاشلة
+   */
+  async getFailedDeliveries(limit: number = 100): Promise<any[]> {
+    return this.prisma.devWebhookDelivery.findMany({
+      where: { status: 'failed' },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      include: { webhook: true },
+    });
   }
 
   /**

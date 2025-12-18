@@ -13,6 +13,11 @@ export const PERMISSIONS_KEY = 'permissions';
 export const Permissions = (...permissions: string[]) => SetMetadata(PERMISSIONS_KEY, permissions);
 
 /**
+ * Alias for Permissions decorator
+ */
+export const RequirePermissions = Permissions;
+
+/**
  * Common permission constants for Developer System
  */
 export const Permission = {

@@ -1,24 +1,24 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../../prisma/prisma.service';
 
 export interface SystemEvent {
   id?: string;
   eventType: string;
-  source: string;
-  sourceId?: string;
+  sourceSystem: string;
+  targetSystem?: string;
+  aggregateId?: string;
+  aggregateType?: string;
   payload: any;
   metadata?: any;
-  timestamp?: Date;
+  priority?: number;
   correlationId?: string;
-  userId?: string;
-  tenantId?: string;
 }
 
 export interface ProcessedEvent extends SystemEvent {
   id: string;
   processedAt: Date;
-  status: 'pending' | 'processed' | 'failed';
+  status: 'pending' | 'processing' | 'completed' | 'failed';
   retryCount: number;
   error?: string;
 }
@@ -57,6 +57,9 @@ export class EventProcessorService implements OnModuleInit {
     // Finance events
     this.registerHandler('finance.*', this.handleFinanceEvent.bind(this));
     
+    // Payment events
+    this.registerHandler('payment.*', this.handlePaymentEvent.bind(this));
+    
     // System events
     this.registerHandler('system.*', this.handleSystemEvent.bind(this));
   }
@@ -68,6 +71,7 @@ export class EventProcessorService implements OnModuleInit {
     const handlers = this.eventHandlers.get(eventPattern) || [];
     handlers.push(handler);
     this.eventHandlers.set(eventPattern, handlers);
+    this.logger.debug(`Registered handler for pattern: ${eventPattern}`);
   }
 
   /**
@@ -80,7 +84,6 @@ export class EventProcessorService implements OnModuleInit {
     const processedEvent: ProcessedEvent = {
       ...event,
       id: eventId,
-      timestamp,
       processedAt: timestamp,
       status: 'pending',
       retryCount: 0,
@@ -90,11 +93,15 @@ export class EventProcessorService implements OnModuleInit {
       // حفظ الحدث في قاعدة البيانات
       await this.storeEvent(processedEvent);
 
+      // تحديث الحالة إلى processing
+      processedEvent.status = 'processing';
+      await this.updateEventStatus(processedEvent);
+
       // معالجة الحدث
       await this.processEvent(processedEvent);
 
       // تحديث حالة الحدث
-      processedEvent.status = 'processed';
+      processedEvent.status = 'completed';
       processedEvent.processedAt = new Date();
       await this.updateEventStatus(processedEvent);
 
@@ -103,7 +110,7 @@ export class EventProcessorService implements OnModuleInit {
 
       this.logger.log(`Event processed: ${event.eventType} (${eventId})`);
       return processedEvent;
-    } catch (error) {
+    } catch (error: any) {
       processedEvent.status = 'failed';
       processedEvent.error = error.message;
       await this.updateEventStatus(processedEvent);
@@ -127,6 +134,36 @@ export class EventProcessorService implements OnModuleInit {
         }
       }
     }
+
+    // البحث عن الاشتراكات وإنشاء deliveries
+    await this.createDeliveries(event);
+  }
+
+  /**
+   * إنشاء deliveries للاشتراكات
+   */
+  private async createDeliveries(event: ProcessedEvent): Promise<void> {
+    const subscriptions = await this.prisma.devEventSubscription.findMany({
+      where: {
+        isActive: true,
+        OR: [
+          { eventType: event.eventType },
+          { eventType: event.eventType.split('.')[0] + '.*' },
+          { eventType: '*' },
+        ],
+      },
+    });
+
+    for (const subscription of subscriptions) {
+      await this.prisma.devEventDelivery.create({
+        data: {
+          eventId: event.id,
+          subscriptionId: subscription.id,
+          status: 'pending',
+          attempts: 0,
+        },
+      });
+    }
   }
 
   /**
@@ -149,14 +186,15 @@ export class EventProcessorService implements OnModuleInit {
       data: {
         id: event.id,
         eventType: event.eventType,
-        source: event.source,
-        sourceId: event.sourceId,
+        sourceSystem: event.sourceSystem,
+        targetSystem: event.targetSystem,
+        aggregateId: event.aggregateId,
+        aggregateType: event.aggregateType,
         payload: event.payload as any,
         metadata: event.metadata as any,
         status: event.status,
+        priority: event.priority || 5,
         retryCount: event.retryCount,
-        correlationId: event.correlationId,
-        createdAt: event.timestamp,
       },
     });
   }
@@ -171,7 +209,7 @@ export class EventProcessorService implements OnModuleInit {
         status: event.status,
         processedAt: event.processedAt,
         retryCount: event.retryCount,
-        error: event.error,
+        errorMessage: event.error,
       },
     });
   }
@@ -183,35 +221,77 @@ export class EventProcessorService implements OnModuleInit {
     return `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
+  /**
+   * إعادة معالجة حدث فاشل
+   */
+  async retryEvent(eventId: string): Promise<ProcessedEvent> {
+    const event = await this.prisma.devEvent.findUnique({
+      where: { id: eventId },
+    });
+
+    if (!event) {
+      throw new Error(`Event not found: ${eventId}`);
+    }
+
+    if (event.retryCount >= event.maxRetries) {
+      throw new Error(`Max retries exceeded for event: ${eventId}`);
+    }
+
+    const processedEvent: ProcessedEvent = {
+      id: event.id,
+      eventType: event.eventType,
+      sourceSystem: event.sourceSystem,
+      targetSystem: event.targetSystem || undefined,
+      aggregateId: event.aggregateId || undefined,
+      aggregateType: event.aggregateType || undefined,
+      payload: event.payload,
+      metadata: event.metadata as any,
+      status: 'pending',
+      retryCount: event.retryCount + 1,
+      processedAt: new Date(),
+    };
+
+    return this.publish(processedEvent);
+  }
+
+  /**
+   * الحصول على الأحداث الفاشلة
+   */
+  async getFailedEvents(limit: number = 100): Promise<any[]> {
+    return this.prisma.devEvent.findMany({
+      where: { status: 'failed' },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+  }
+
   // ==================== Event Handlers ====================
 
   private async handleSubscriberEvent(event: SystemEvent): Promise<void> {
     this.logger.debug(`Handling subscriber event: ${event.eventType}`);
-    // معالجة أحداث المشتركين
   }
 
   private async handleInvoiceEvent(event: SystemEvent): Promise<void> {
     this.logger.debug(`Handling invoice event: ${event.eventType}`);
-    // معالجة أحداث الفواتير
   }
 
   private async handleAssetEvent(event: SystemEvent): Promise<void> {
     this.logger.debug(`Handling asset event: ${event.eventType}`);
-    // معالجة أحداث الأصول
   }
 
   private async handleNetworkEvent(event: SystemEvent): Promise<void> {
     this.logger.debug(`Handling network event: ${event.eventType}`);
-    // معالجة أحداث الشبكة
   }
 
   private async handleFinanceEvent(event: SystemEvent): Promise<void> {
     this.logger.debug(`Handling finance event: ${event.eventType}`);
-    // معالجة أحداث المالية
+  }
+
+  private async handlePaymentEvent(event: SystemEvent): Promise<void> {
+    this.logger.debug(`Handling payment event: ${event.eventType}`);
   }
 
   private async handleSystemEvent(event: SystemEvent): Promise<void> {
     this.logger.debug(`Handling system event: ${event.eventType}`);
-    // معالجة أحداث النظام
   }
 }

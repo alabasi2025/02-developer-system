@@ -18,6 +18,7 @@ import {
   ApiParam,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { IntegrationsService } from './integrations.service';
 import {
   CreateIntegrationDto,
@@ -34,6 +35,7 @@ export class IntegrationsController {
   constructor(private readonly integrationsService: IntegrationsService) {}
 
   @Post()
+  @RequirePermissions('integrations:create')
   @ApiOperation({ summary: 'إنشاء تكامل جديد', description: 'إنشاء تكامل جديد مع نظام داخلي أو خارجي' })
   @ApiResponse({ status: 201, description: 'تم إنشاء التكامل بنجاح', type: IntegrationResponseDto })
   @ApiResponse({ status: 400, description: 'بيانات غير صالحة' })
@@ -42,6 +44,7 @@ export class IntegrationsController {
   }
 
   @Get()
+  @RequirePermissions('integrations:read')
   @ApiOperation({ summary: 'جلب جميع التكاملات', description: 'جلب قائمة بجميع التكاملات مع إمكانية الفلترة والتصفح' })
   @ApiResponse({ status: 200, description: 'قائمة التكاملات' })
   async findAll(@Query() query: IntegrationQueryDto) {
@@ -49,6 +52,7 @@ export class IntegrationsController {
   }
 
   @Get(':id')
+  @RequirePermissions('integrations:read')
   @ApiOperation({ summary: 'جلب تكامل محدد', description: 'جلب تفاصيل تكامل محدد بواسطة المعرف' })
   @ApiParam({ name: 'id', description: 'معرف التكامل', type: 'string' })
   @ApiResponse({ status: 200, description: 'تفاصيل التكامل', type: IntegrationResponseDto })
@@ -58,6 +62,7 @@ export class IntegrationsController {
   }
 
   @Put(':id')
+  @RequirePermissions('integrations:update')
   @ApiOperation({ summary: 'تحديث تكامل', description: 'تحديث بيانات تكامل موجود' })
   @ApiParam({ name: 'id', description: 'معرف التكامل', type: 'string' })
   @ApiResponse({ status: 200, description: 'تم تحديث التكامل بنجاح', type: IntegrationResponseDto })
@@ -70,6 +75,7 @@ export class IntegrationsController {
   }
 
   @Delete(':id')
+  @RequirePermissions('integrations:delete')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'حذف تكامل', description: 'حذف تكامل (soft delete)' })
   @ApiParam({ name: 'id', description: 'معرف التكامل', type: 'string' })
@@ -80,6 +86,7 @@ export class IntegrationsController {
   }
 
   @Post(':id/test')
+  @RequirePermissions('integrations:execute')
   @ApiOperation({ summary: 'اختبار اتصال التكامل', description: 'اختبار الاتصال بالنظام المتكامل' })
   @ApiParam({ name: 'id', description: 'معرف التكامل', type: 'string' })
   @ApiResponse({ status: 200, description: 'نتيجة الاختبار', type: TestIntegrationResponseDto })

@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { EventsService } from './events.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 
 describe('EventsService', () => {
   let service: EventsService;
@@ -11,32 +12,29 @@ describe('EventsService', () => {
   const mockPrismaService = {
     devEvent: {
       create: jest.fn(),
-      findMany: jest.fn(),
       findUnique: jest.fn(),
-      update: jest.fn(),
-      count: jest.fn(),
-    },
-    devWebhook: {
-      create: jest.fn(),
       findMany: jest.fn(),
-      findUnique: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
       count: jest.fn(),
+      update: jest.fn(),
     },
     devEventSubscription: {
-      create: jest.fn(),
       findMany: jest.fn(),
+      findFirst: jest.fn(),
       findUnique: jest.fn(),
+      create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      count: jest.fn(),
+    },
+    devEventDelivery: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+      update: jest.fn(),
     },
   };
 
   const mockEventEmitter = {
     emit: jest.fn(),
-    on: jest.fn(),
-    removeListener: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -57,253 +55,222 @@ describe('EventsService', () => {
     jest.clearAllMocks();
   });
 
-  describe('publishEvent', () => {
-    it('should create and publish an event', async () => {
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
+
+  describe('publish', () => {
+    it('should publish an event successfully', async () => {
       const eventData = {
         eventType: 'customer.created',
-        sourceSystem: 'billing',
+        sourceSystem: 'core',
         payload: { customerId: '123', name: 'Test Customer' },
       };
 
-      const createdEvent = {
+      const mockEvent = {
         id: 'event-123',
         ...eventData,
-        status: 'pending',
+        status: 'processing',
         createdAt: new Date(),
       };
 
-      mockPrismaService.devEvent.create.mockResolvedValue(createdEvent);
+      mockPrismaService.devEvent.create.mockResolvedValue(mockEvent);
+      mockPrismaService.devEvent.findUnique.mockResolvedValue(mockEvent);
+      mockPrismaService.devEventSubscription.findMany.mockResolvedValue([]);
+      mockPrismaService.devEventDelivery.findMany.mockResolvedValue([]);
+      mockPrismaService.devEvent.update.mockResolvedValue({ ...mockEvent, status: 'completed' });
 
-      const result = await service.publishEvent(eventData);
+      const result = await service.publish(eventData);
 
       expect(result).toBeDefined();
       expect(result.id).toBe('event-123');
+      expect(result.eventType).toBe('customer.created');
       expect(mockPrismaService.devEvent.create).toHaveBeenCalled();
-      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
-        eventData.eventType,
-        expect.any(Object),
-      );
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith('customer.created', expect.any(Object));
     });
 
-    it('should handle event with metadata', async () => {
+    it('should create scheduled event without immediate processing', async () => {
       const eventData = {
-        eventType: 'invoice.paid',
-        sourceSystem: 'billing',
-        payload: { invoiceId: '456', amount: 1000 },
-        metadata: { userId: 'user-1', ip: '192.168.1.1' },
+        eventType: 'report.generate',
+        sourceSystem: 'core',
+        payload: { reportId: '456' },
+        scheduledFor: new Date(Date.now() + 3600000).toISOString(),
       };
 
-      const createdEvent = {
+      const mockEvent = {
         id: 'event-456',
         ...eventData,
         status: 'pending',
         createdAt: new Date(),
       };
 
-      mockPrismaService.devEvent.create.mockResolvedValue(createdEvent);
+      mockPrismaService.devEvent.create.mockResolvedValue(mockEvent);
 
-      const result = await service.publishEvent(eventData);
+      const result = await service.publish(eventData);
 
-      expect(result.id).toBe('event-456');
-      expect(mockPrismaService.devEvent.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          eventType: 'invoice.paid',
-          metadata: eventData.metadata,
-        }),
-      });
+      expect(result.status).toBe('pending');
     });
   });
 
-  describe('getEvents', () => {
+  describe('findAllEvents', () => {
     it('should return paginated events', async () => {
-      const events = [
-        { id: 'event-1', eventType: 'customer.created', status: 'completed' },
-        { id: 'event-2', eventType: 'invoice.paid', status: 'completed' },
+      const mockEvents = [
+        { id: '1', eventType: 'test.event', status: 'completed' },
+        { id: '2', eventType: 'test.event', status: 'completed' },
       ];
 
-      mockPrismaService.devEvent.findMany.mockResolvedValue(events);
+      mockPrismaService.devEvent.findMany.mockResolvedValue(mockEvents);
       mockPrismaService.devEvent.count.mockResolvedValue(2);
 
-      const result = await service.getEvents({ page: 1, limit: 10 });
+      const result = await service.findAllEvents({ page: 1, limit: 10 });
 
       expect(result.data).toHaveLength(2);
-      expect(result.total).toBe(2);
-      expect(mockPrismaService.devEvent.findMany).toHaveBeenCalled();
+      expect(result.meta.total).toBe(2);
+      expect(result.meta.page).toBe(1);
     });
 
-    it('should filter events by type', async () => {
-      const events = [
-        { id: 'event-1', eventType: 'customer.created', status: 'completed' },
-      ];
-
-      mockPrismaService.devEvent.findMany.mockResolvedValue(events);
-      mockPrismaService.devEvent.count.mockResolvedValue(1);
-
-      const result = await service.getEvents({
-        page: 1,
-        limit: 10,
-        eventType: 'customer.created',
-      });
-
-      expect(result.data).toHaveLength(1);
-      expect(mockPrismaService.devEvent.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            eventType: 'customer.created',
-          }),
-        }),
-      );
-    });
-
-    it('should filter events by status', async () => {
+    it('should filter events by eventType', async () => {
       mockPrismaService.devEvent.findMany.mockResolvedValue([]);
       mockPrismaService.devEvent.count.mockResolvedValue(0);
 
-      await service.getEvents({
-        page: 1,
-        limit: 10,
-        status: 'failed',
-      });
+      await service.findAllEvents({ eventType: 'customer.created', page: 1, limit: 10 });
 
       expect(mockPrismaService.devEvent.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            status: 'failed',
+            eventType: { contains: 'customer.created' },
           }),
-        }),
+        })
       );
     });
   });
 
-  describe('getEventById', () => {
+  describe('findOneEvent', () => {
     it('should return event by id', async () => {
-      const event = {
+      const mockEvent = {
         id: 'event-123',
-        eventType: 'customer.created',
-        status: 'completed',
+        eventType: 'test.event',
+        deliveries: [],
       };
 
-      mockPrismaService.devEvent.findUnique.mockResolvedValue(event);
+      mockPrismaService.devEvent.findUnique.mockResolvedValue(mockEvent);
 
-      const result = await service.getEventById('event-123');
+      const result = await service.findOneEvent('event-123');
 
       expect(result).toBeDefined();
-      expect(result?.id).toBe('event-123');
+      expect(result.id).toBe('event-123');
     });
 
-    it('should return null for non-existent event', async () => {
+    it('should throw NotFoundException for non-existent event', async () => {
       mockPrismaService.devEvent.findUnique.mockResolvedValue(null);
 
-      const result = await service.getEventById('non-existent');
-
-      expect(result).toBeNull();
+      await expect(service.findOneEvent('non-existent')).rejects.toThrow(NotFoundException);
     });
   });
 
-  describe('createWebhook', () => {
-    it('should create a webhook', async () => {
-      const webhookData = {
-        name: 'Test Webhook',
-        url: 'https://example.com/webhook',
-        events: ['customer.created', 'invoice.paid'],
+  describe('createSubscription', () => {
+    it('should create a subscription successfully', async () => {
+      const subscriptionData = {
+        eventType: 'customer.created',
+        targetSystem: 'billing',
+        webhookUrl: 'https://billing.example.com/webhook',
       };
 
-      const createdWebhook = {
-        id: 'webhook-123',
-        ...webhookData,
+      const mockSubscription = {
+        id: 'sub-123',
+        ...subscriptionData,
         isActive: true,
         createdAt: new Date(),
       };
 
-      mockPrismaService.devWebhook.create.mockResolvedValue(createdWebhook);
+      mockPrismaService.devEventSubscription.findFirst.mockResolvedValue(null);
+      mockPrismaService.devEventSubscription.create.mockResolvedValue(mockSubscription);
 
-      const result = await service.createWebhook(webhookData);
+      const result = await service.createSubscription(subscriptionData);
 
-      expect(result.id).toBe('webhook-123');
-      expect(result.url).toBe(webhookData.url);
-      expect(mockPrismaService.devWebhook.create).toHaveBeenCalled();
+      expect(result).toBeDefined();
+      expect(result.id).toBe('sub-123');
+      expect(mockPrismaService.devEventSubscription.create).toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException for duplicate subscription', async () => {
+      const subscriptionData = {
+        eventType: 'customer.created',
+        targetSystem: 'billing',
+      };
+
+      mockPrismaService.devEventSubscription.findFirst.mockResolvedValue({ id: 'existing' });
+
+      await expect(service.createSubscription(subscriptionData)).rejects.toThrow(BadRequestException);
     });
   });
 
-  describe('getWebhooks', () => {
-    it('should return all webhooks', async () => {
-      const webhooks = [
-        { id: 'webhook-1', name: 'Webhook 1', isActive: true },
-        { id: 'webhook-2', name: 'Webhook 2', isActive: false },
+  describe('findAllSubscriptions', () => {
+    it('should return paginated subscriptions', async () => {
+      const mockSubscriptions = [
+        { id: '1', eventType: 'test.*', targetSystem: 'billing', isActive: true },
+        { id: '2', eventType: 'customer.*', targetSystem: 'crm', isActive: true },
       ];
 
-      mockPrismaService.devWebhook.findMany.mockResolvedValue(webhooks);
-      mockPrismaService.devWebhook.count.mockResolvedValue(2);
+      mockPrismaService.devEventSubscription.findMany.mockResolvedValue(mockSubscriptions);
+      mockPrismaService.devEventSubscription.count.mockResolvedValue(2);
 
-      const result = await service.getWebhooks({ page: 1, limit: 10 });
+      const result = await service.findAllSubscriptions({ page: 1, limit: 10 });
 
       expect(result.data).toHaveLength(2);
-      expect(result.total).toBe(2);
-    });
-
-    it('should filter active webhooks', async () => {
-      const webhooks = [
-        { id: 'webhook-1', name: 'Webhook 1', isActive: true },
-      ];
-
-      mockPrismaService.devWebhook.findMany.mockResolvedValue(webhooks);
-      mockPrismaService.devWebhook.count.mockResolvedValue(1);
-
-      const result = await service.getWebhooks({
-        page: 1,
-        limit: 10,
-        isActive: true,
-      });
-
-      expect(result.data).toHaveLength(1);
+      expect(result.meta.total).toBe(2);
     });
   });
 
-  describe('updateWebhook', () => {
-    it('should update a webhook', async () => {
-      const updateData = {
-        name: 'Updated Webhook',
-        url: 'https://new-url.com/webhook',
-      };
+  describe('updateSubscription', () => {
+    it('should update subscription successfully', async () => {
+      const updateData = { isActive: false };
 
-      const updatedWebhook = {
-        id: 'webhook-123',
-        ...updateData,
-        isActive: true,
-      };
-
-      mockPrismaService.devWebhook.update.mockResolvedValue(updatedWebhook);
-
-      const result = await service.updateWebhook('webhook-123', updateData);
-
-      expect(result.name).toBe('Updated Webhook');
-      expect(mockPrismaService.devWebhook.update).toHaveBeenCalledWith({
-        where: { id: 'webhook-123' },
-        data: updateData,
+      mockPrismaService.devEventSubscription.findUnique.mockResolvedValue({ id: 'sub-123' });
+      mockPrismaService.devEventSubscription.update.mockResolvedValue({
+        id: 'sub-123',
+        isActive: false,
       });
+
+      const result = await service.updateSubscription('sub-123', updateData);
+
+      expect(result.isActive).toBe(false);
+    });
+
+    it('should throw NotFoundException for non-existent subscription', async () => {
+      mockPrismaService.devEventSubscription.findUnique.mockResolvedValue(null);
+
+      await expect(service.updateSubscription('non-existent', {})).rejects.toThrow(NotFoundException);
     });
   });
 
-  describe('deleteWebhook', () => {
-    it('should delete a webhook', async () => {
-      mockPrismaService.devWebhook.delete.mockResolvedValue({ id: 'webhook-123' });
+  describe('removeSubscription', () => {
+    it('should delete subscription successfully', async () => {
+      mockPrismaService.devEventSubscription.findUnique.mockResolvedValue({ id: 'sub-123' });
+      mockPrismaService.devEventSubscription.delete.mockResolvedValue({ id: 'sub-123' });
 
-      await service.deleteWebhook('webhook-123');
+      const result = await service.removeSubscription('sub-123');
 
-      expect(mockPrismaService.devWebhook.delete).toHaveBeenCalledWith({
-        where: { id: 'webhook-123' },
+      expect(result.message).toBe('تم حذف الاشتراك بنجاح');
+      expect(mockPrismaService.devEventSubscription.delete).toHaveBeenCalledWith({
+        where: { id: 'sub-123' },
       });
+    });
+
+    it('should throw NotFoundException for non-existent subscription', async () => {
+      mockPrismaService.devEventSubscription.findUnique.mockResolvedValue(null);
+
+      await expect(service.removeSubscription('non-existent')).rejects.toThrow(NotFoundException);
     });
   });
 
-  describe('getEventTypes', () => {
-    it('should return all event types', () => {
-      const eventTypes = service.getEventTypes();
+  describe('retryFailedDeliveries', () => {
+    it('should retry failed deliveries', async () => {
+      mockPrismaService.devEventDelivery.findMany.mockResolvedValue([]);
 
-      expect(Array.isArray(eventTypes)).toBe(true);
-      expect(eventTypes.length).toBeGreaterThan(0);
-      expect(eventTypes).toContain('customer.created');
-      expect(eventTypes).toContain('invoice.paid');
+      const result = await service.retryFailedDeliveries();
+
+      expect(result.retried).toBe(0);
     });
   });
 });

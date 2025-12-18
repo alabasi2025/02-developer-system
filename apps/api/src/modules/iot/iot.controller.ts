@@ -18,6 +18,7 @@ import {
   ApiParam,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { IotService, RegisterDeviceDto, DeviceDataDto, DeviceCommandDto } from './iot.service';
 
 @ApiTags('إنترنت الأشياء - IoT')

@@ -292,4 +292,52 @@ export class MonitoringService {
       orderBy: { timestamp: 'asc' },
     });
   }
+
+  // ==================== Systems Status ====================
+
+  async getSystemsStatus() {
+    // Get all active integrations and check their health
+    const integrations = await this.prisma.devIntegration.findMany({
+      where: { 
+        status: { not: 'deleted' },
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        name: true,
+        nameAr: true,
+        type: true,
+        status: true,
+        lastHealthCheck: true,
+        lastHealthStatus: true,
+        healthEndpoint: true,
+      },
+    });
+
+    return integrations.map(integration => ({
+      systemId: integration.id,
+      name: integration.nameAr || integration.name,
+      type: integration.type,
+      status: this.mapHealthStatus(integration.lastHealthStatus || integration.status),
+      responseTime: null, // Would need actual health check to get this
+      lastCheck: integration.lastHealthCheck,
+    }));
+  }
+
+  private mapHealthStatus(status: string): string {
+    switch (status) {
+      case 'active':
+      case 'healthy':
+        return 'healthy';
+      case 'degraded':
+      case 'maintenance':
+        return 'degraded';
+      case 'inactive':
+      case 'error':
+      case 'unhealthy':
+        return 'unhealthy';
+      default:
+        return 'unknown';
+    }
+  }
 }

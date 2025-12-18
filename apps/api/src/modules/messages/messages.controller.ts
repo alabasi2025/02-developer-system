@@ -18,6 +18,7 @@ import {
   ApiParam,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { MessagesService, MessageProviderConfig, SendMessageDto, BulkMessageDto } from './messages.service';
 
 @ApiTags('الرسائل - Messages')

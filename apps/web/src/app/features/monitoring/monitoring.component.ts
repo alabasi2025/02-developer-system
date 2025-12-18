@@ -317,15 +317,16 @@ export class MonitoringComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Set mock systems status
-    this.systemsStatus.set([
-      { systemId: 'core', name: 'النظام الأم', status: 'healthy', responseTime: 45, lastCheck: new Date() },
-      { systemId: 'assets', name: 'نظام الأصول', status: 'healthy', responseTime: 62, lastCheck: new Date() },
-      { systemId: 'billing', name: 'نظام الفوترة', status: 'degraded', responseTime: 250, lastCheck: new Date() },
-      { systemId: 'inventory', name: 'نظام المخزون', status: 'unhealthy', responseTime: null, lastCheck: new Date() },
-      { systemId: 'hr', name: 'نظام الموارد البشرية', status: 'healthy', responseTime: 78, lastCheck: new Date() },
-      { systemId: 'reports', name: 'نظام التقارير', status: 'healthy', responseTime: 95, lastCheck: new Date() },
-    ]);
+    // Fetch systems status from API
+    this.monitoringService.getSystemsStatus().subscribe({
+      next: (systems) => {
+        this.systemsStatus.set(systems);
+      },
+      error: () => {
+        // Set empty array on error
+        this.systemsStatus.set([]);
+      }
+    });
   }
 
   acknowledgeAlert(alert: Alert): void {

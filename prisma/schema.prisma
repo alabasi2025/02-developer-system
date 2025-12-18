@@ -174,6 +174,7 @@ model DevWebhook {
   // Relations
   integration   DevIntegration @relation(fields: [integrationId], references: [id])
   logs          DevWebhookLog[]
+  deliveries    DevWebhookDelivery[]
 
   @@map("dev_webhooks")
   @@index([integrationId])
@@ -1007,32 +1008,6 @@ model DevDeadLetterQueue {
   @@index([createdAt])
 }
 
-// جدول سجلات التدقيق - Audit Trail للعمليات الحساسة
-model DevAuditLog {
-  id            String   @id @default(uuid()) @db.Uuid
-  action        String   @db.VarChar(50) // create, update, delete, login, logout, etc.
-  entityType    String   @map("entity_type") @db.VarChar(100)
-  entityId      String?  @map("entity_id") @db.Uuid
-  userId        String?  @map("user_id") @db.Uuid
-  userEmail     String?  @map("user_email") @db.VarChar(255)
-  userName      String?  @map("user_name") @db.VarChar(255)
-  oldValue      Json?    @map("old_value") @db.JsonB
-  newValue      Json?    @map("new_value") @db.JsonB
-  changes       Json?    @db.JsonB // Diff between old and new
-  ipAddress     String?  @map("ip_address") @db.VarChar(45)
-  userAgent     String?  @map("user_agent") @db.VarChar(500)
-  requestId     String?  @map("request_id") @db.VarChar(100)
-  systemId      String?  @map("system_id") @db.VarChar(50)
-  metadata      Json?    @db.JsonB
-  createdAt     DateTime @default(now()) @map("created_at")
-
-  @@map("dev_audit_logs")
-  @@index([action])
-  @@index([entityType])
-  @@index([entityId])
-  @@index([userId])
-  @@index([createdAt])
-}
 
 // جدول سجلات الوصول - Access Logs
 model DevAccessLog {
@@ -1100,4 +1075,30 @@ model DevPerformanceLog {
   @@index([metricName])
   @@index([metricType])
   @@index([timestamp])
+}
+
+
+// جدول تسليم Webhooks - تتبع تسليم كل webhook
+model DevWebhookDelivery {
+  id            String   @id @default(uuid()) @db.Uuid
+  webhookId     String   @map("webhook_id") @db.Uuid
+  eventId       String   @map("event_id") @db.VarChar(100)
+  url           String   @db.VarChar(500)
+  payload       Json     @db.JsonB
+  status        String   @default("pending") @db.VarChar(20) // pending, success, failed
+  statusCode    Int?     @map("status_code")
+  response      String?  @db.Text
+  error         String?  @db.Text
+  attemptCount  Int      @default(0) @map("attempt_count")
+  nextRetryAt   DateTime? @map("next_retry_at")
+  deliveredAt   DateTime? @map("delivered_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Relations
+  webhook       DevWebhook @relation(fields: [webhookId], references: [id])
+
+  @@map("dev_webhook_deliveries")
+  @@index([webhookId])
+  @@index([status])
+  @@index([createdAt])
 }
