@@ -1,101 +1,164 @@
-# DeveloperSystem
+# نظام المطور - Developer System
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+## العمود الفقري للتكامل بين جميع أنظمة إدارة الكهرباء
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
+نظام المطور هو النظام المركزي الذي يربط جميع أنظمة إدارة الكهرباء العشرة ويوفر البنية التحتية للتكامل والتواصل بينها.
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/getting-started/tutorials/angular-monorepo-tutorial?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+## الأنظمة المتكاملة
 
-## Run tasks
+| # | النظام | الرمز | الوصف |
+|---|--------|-------|-------|
+| 1 | النظام الأم | core | إدارة العملاء والعدادات |
+| 2 | نظام الأصول | assets | إدارة المحولات والشبكات |
+| 3 | العمليات الميدانية | field | إدارة الفرق والمهام |
+| 4 | نظام المراقبة | scada | مراقبة الشبكة في الوقت الفعلي |
+| 5 | نظام المخزون | inventory | إدارة المواد والمستودعات |
+| 6 | نظام الفوترة | billing | الفواتير والتحصيل |
+| 7 | الموارد البشرية | hr | إدارة الموظفين |
+| 8 | نظام التقارير | reports | التقارير والتحليلات |
+| 9 | نظام المشاريع | projects | إدارة المشاريع |
 
-To run the dev server for your app, use:
+## الميزات الرئيسية
 
-```sh
-npx nx serve web
+### 1. إدارة التكاملات (Integrations)
+- تسجيل وإدارة التكاملات الداخلية والخارجية
+- فحص صحة الأنظمة المتصلة
+- إعدادات مخصصة لكل تكامل
+
+### 2. مفاتيح API (API Keys)
+- إنشاء وإدارة مفاتيح الوصول
+- صلاحيات دقيقة لكل مفتاح
+- تتبع الاستخدام وRate Limiting
+
+### 3. نظام الأحداث (Event System)
+- نشر الأحداث بين الأنظمة
+- اشتراكات مخصصة للأحداث
+- Webhooks للتكاملات الخارجية
+
+### 4. بوابة API (API Gateway)
+- توجيه الطلبات للأنظمة المستهدفة
+- Rate Limiting وحماية من الإساءة
+- تسجيل جميع الطلبات
+
+### 5. المراقبة (Monitoring)
+- مراقبة صحة جميع الأنظمة
+- تنبيهات تقنية
+- مقاييس الأداء
+
+### 6. المدفوعات (Payments)
+- تكامل مع بوابات الدفع (STC Pay, Mada, إلخ)
+- معالجة المدفوعات والاستردادات
+- Webhooks لإشعارات الدفع
+
+### 7. الرسائل (Messages)
+- إرسال SMS, Email, WhatsApp, Push
+- قوالب رسائل قابلة للتخصيص
+- إرسال جماعي
+
+### 8. إنترنت الأشياء (IoT)
+- إدارة أجهزة العدادات الذكية
+- استقبال البيانات في الوقت الفعلي
+- إرسال الأوامر للأجهزة
+- تنبيهات ذكية
+
+### 9. الذكاء الاصطناعي (AI)
+- تحليل البيانات
+- التنبؤ بالاستهلاك والأعطال
+- معالجة اللغة الطبيعية
+- تصنيف المستندات
+
+## البنية التقنية
+
+```
+apps/
+├── api/                    # Backend NestJS
+│   └── src/
+│       ├── app/           # App module
+│       ├── prisma/        # Prisma service
+│       └── modules/       # Feature modules
+│           ├── integrations/
+│           ├── api-keys/
+│           ├── events/
+│           ├── gateway/
+│           ├── monitoring/
+│           ├── payments/
+│           ├── messages/
+│           ├── iot/
+│           └── ai/
+├── web/                    # Frontend Angular
+└── mobile/                 # Mobile app (future)
+
+prisma/
+└── schema.prisma          # Database schema
+
+generated/
+└── prisma/                # Generated Prisma client
 ```
 
-To create a production bundle:
+## التثبيت والتشغيل
 
-```sh
-npx nx build web
+### المتطلبات
+- Node.js 18+
+- PostgreSQL 14+
+- pnpm
+
+### التثبيت
+
+```bash
+# استنساخ المستودع
+git clone https://github.com/alabasi2025/systems-blueprint.git
+cd 02-developer-system
+
+# تثبيت الاعتماديات
+pnpm install
+
+# إعداد قاعدة البيانات
+npx prisma db push
+npx prisma generate
+
+# تشغيل التطبيق
+npx nx serve api
 ```
 
-To see all available targets to run for a project, run:
+### متغيرات البيئة
 
-```sh
-npx nx show project web
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/developer_system"
+NODE_ENV=development
+PORT=3000
+OPENAI_API_KEY=your-api-key
+JWT_SECRET=your-secret
 ```
 
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
+## API Documentation
 
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Add new projects
-
-While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
-
-Use the plugin's generator to create new projects.
-
-To generate a new application, use:
-
-```sh
-npx nx g @nx/angular:app demo
+بعد تشغيل التطبيق، يمكن الوصول لوثائق API على:
+```
+http://localhost:3000/docs
 ```
 
-To generate a new library, use:
+## نقاط النهاية الرئيسية
 
-```sh
-npx nx g @nx/angular:lib mylib
-```
+| المسار | الوصف |
+|--------|-------|
+| `POST /api/v1/integrations` | إنشاء تكامل جديد |
+| `POST /api/v1/api-keys` | إنشاء مفتاح API |
+| `POST /api/v1/events/publish` | نشر حدث |
+| `POST /api/v1/gateway/proxy` | توجيه طلب |
+| `GET /api/v1/monitoring/health` | فحص صحة الأنظمة |
+| `POST /api/v1/payments/process` | معالجة دفعة |
+| `POST /api/v1/messages/send` | إرسال رسالة |
+| `POST /api/v1/iot/data` | استقبال بيانات IoT |
+| `POST /api/v1/ai/analyze` | تحليل بيانات |
 
-You can use `npx nx list` to get a list of installed plugins. Then, run `npx nx list <plugin-name>` to learn about more specific capabilities of a particular plugin. Alternatively, [install Nx Console](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) to browse plugins and generators in your IDE.
+## المساهمة
 
-[Learn more about Nx plugins &raquo;](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) | [Browse the plugin registry &raquo;](https://nx.dev/plugin-registry?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+نرحب بالمساهمات! يرجى قراءة دليل المساهمة قبل البدء.
 
-## Set up CI!
+## الترخيص
 
-### Step 1
+MIT License
 
-To connect to Nx Cloud, run the following command:
+---
 
-```sh
-npx nx connect
-```
-
-Connecting to Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
-
-- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-### Step 2
-
-Use the following command to configure a CI workflow for your workspace:
-
-```sh
-npx nx g ci-workflow
-```
-
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Install Nx Console
-
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
-
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Useful links
-
-Learn more:
-
-- [Learn more about this workspace setup](https://nx.dev/getting-started/tutorials/angular-monorepo-tutorial?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-And join the Nx community:
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+**نظام المطور** - جزء من مشروع أنظمة إدارة الكهرباء المتكاملة
